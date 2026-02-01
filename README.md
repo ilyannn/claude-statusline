@@ -14,6 +14,20 @@ Custom status line script for Claude Code displaying context usage, model, git b
 - `⏱ 40%→2am` - Claude.ai 5-hour usage + reset time (color-coded: green <50%, yellow 50-79%, red ≥80%)
 - `↑1.0.24` - Update available (only shown when newer version exists)
 
+## Requirements
+
+**Runtime:**
+- macOS (Keychain access for OAuth, `defaults` for theme detection)
+- Python 3.11+
+- [uv](https://docs.astral.sh/uv/) - to run the script
+- npm - for update version check (`npm view @anthropic-ai/claude-code version`)
+- git - for branch detection
+
+**Development:**
+- [just](https://github.com/casey/just) - command runner
+- [taplo](https://taplo.tamasfe.dev/) - TOML formatting
+- ruff runs via `uvx`, no separate install needed
+
 ## Installation
 
 Add to `~/.claude/settings.json` (example using [uv](https://docs.astral.sh/uv/)):
@@ -29,7 +43,9 @@ Add to `~/.claude/settings.json` (example using [uv](https://docs.astral.sh/uv/)
 
 ## Claude.ai Usage Tracking
 
-The script reads Claude Code's OAuth credentials from macOS Keychain to fetch usage stats from the Anthropic API. Requires being logged into Claude Code with your claude.ai account.
+The script reads Claude Code's OAuth credentials from macOS Keychain (`security find-generic-password -s "Claude Code-credentials"`) to fetch usage stats from the Anthropic API. Requires being logged into Claude Code with your claude.ai account.
+
+Inspired by [this Reddit post](https://old.reddit.com/r/ClaudeCode/comments/1qgzvth/macos_app_for_claude_sessionkeyfree_tracking_v223/).
 
 ## Theme Detection
 
@@ -43,6 +59,9 @@ Colors adapt to light/dark mode via:
 ## Development
 
 ```bash
+just check         # Run all checks (lint + format + toml + test)
+just lint          # Lint with ruff
+just format        # Format with ruff
 just test          # Run 105 tests
 just test-cov      # Tests with coverage (80%)
 just smoke         # Quick visual test
