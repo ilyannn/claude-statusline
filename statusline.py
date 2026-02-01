@@ -116,6 +116,7 @@ def get_claude_oauth_token() -> str | None:
         subprocess.SubprocessError,
         json.JSONDecodeError,
         KeyError,
+        FileNotFoundError,
     ):
         pass
     return None

@@ -18,25 +18,25 @@ Custom status line script for Claude Code displaying context usage, model, git b
 
 **Runtime:**
 - macOS (Keychain access for OAuth, `defaults` for theme detection)
-- Python 3.11+
-- [uv](https://docs.astral.sh/uv/) - to run the script
+- Python 3.11+ (standard library only, no pip install needed)
 - npm - for update version check (`npm view @anthropic-ai/claude-code version`)
 - git - for branch detection
 
 **Development:**
+- [uv](https://docs.astral.sh/uv/) - to run tests
 - [just](https://github.com/casey/just) - command runner
 - [taplo](https://taplo.tamasfe.dev/) - TOML formatting
 - ruff runs via `uvx`, no separate install needed
 
 ## Installation
 
-Add to `~/.claude/settings.json` (example using [uv](https://docs.astral.sh/uv/)):
+Add to `~/.claude/settings.json`:
 
 ```json
 {
   "statusLine": {
     "type": "command",
-    "command": "uv run /path/to/statusline.py"
+    "command": "/path/to/statusline.py"
   }
 }
 ```
