@@ -47,6 +47,13 @@ The script reads Claude Code's OAuth credentials from macOS Keychain (`security 
 
 Inspired by [this Reddit post](https://old.reddit.com/r/ClaudeCode/comments/1qgzvth/macos_app_for_claude_sessionkeyfree_tracking_v223/).
 
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `CLAUDE_STATUSLINE_THEME` | Force `light` or `dark` theme |
+| `CLAUDE_STATUSLINE_DEBUG` | Path to dump input JSON (e.g. `/tmp/debug.json`) |
+
 ## Theme Detection
 
 Colors adapt to light/dark mode via:

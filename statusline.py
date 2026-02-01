@@ -281,6 +281,11 @@ def main():
         print("◐ --% ✦")
         return
 
+    # Debug: dump full JSON if CLAUDE_STATUSLINE_DEBUG is set
+    debug_file = os.environ.get("CLAUDE_STATUSLINE_DEBUG")
+    if debug_file:
+        Path(debug_file).write_text(json.dumps(data, indent=2))
+
     # Extract values (handle None values)
     model_data = data.get("model") or {}
     model = model_data.get("display_name", "?") if isinstance(model_data, dict) else "?"
