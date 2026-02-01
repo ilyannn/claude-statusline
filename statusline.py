@@ -67,9 +67,9 @@ def get_colors(dark_mode: bool) -> dict:
             "ctx_good": "\033[92m",  # bright green
             "ctx_warn": "\033[93m",  # bright yellow
             "ctx_crit": "\033[91m",  # bright red
-            "model": "\033[96m",     # bright cyan
-            "git": "\033[90m",       # gray
-            "update": "\033[93m",    # bright yellow
+            "model": "\033[96m",  # bright cyan
+            "git": "\033[90m",  # gray
+            "update": "\033[93m",  # bright yellow
             "usage_good": "\033[92m",  # bright green
             "usage_warn": "\033[93m",  # bright yellow
             "usage_crit": "\033[91m",  # bright red
@@ -82,9 +82,9 @@ def get_colors(dark_mode: bool) -> dict:
             "ctx_good": "\033[32m",  # dark green
             "ctx_warn": "\033[33m",  # dark yellow/orange
             "ctx_crit": "\033[31m",  # dark red
-            "model": "\033[34m",     # blue
-            "git": "\033[90m",       # dark gray
-            "update": "\033[33m",    # dark yellow
+            "model": "\033[34m",  # blue
+            "git": "\033[90m",  # dark gray
+            "update": "\033[33m",  # dark yellow
             "usage_good": "\033[32m",  # dark green
             "usage_warn": "\033[33m",  # dark yellow
             "usage_crit": "\033[31m",  # dark red
@@ -95,7 +95,13 @@ def get_claude_oauth_token() -> str | None:
     """Get Claude Code OAuth token from macOS Keychain."""
     try:
         result = subprocess.run(
-            ["security", "find-generic-password", "-s", "Claude Code-credentials", "-w"],
+            [
+                "security",
+                "find-generic-password",
+                "-s",
+                "Claude Code-credentials",
+                "-w",
+            ],
             capture_output=True,
             text=True,
             timeout=2,
@@ -105,7 +111,12 @@ def get_claude_oauth_token() -> str | None:
 
         creds = json.loads(result.stdout.strip())
         return creds.get("claudeAiOauth", {}).get("accessToken")
-    except (subprocess.TimeoutExpired, subprocess.SubprocessError, json.JSONDecodeError, KeyError):
+    except (
+        subprocess.TimeoutExpired,
+        subprocess.SubprocessError,
+        json.JSONDecodeError,
+        KeyError,
+    ):
         pass
     return None
 
@@ -149,9 +160,13 @@ def get_claude_usage() -> dict | None:
                     data = json.loads(resp.read().decode())
                     usage = {
                         "five_hour": data.get("five_hour", {}).get("utilization", 0),
-                        "five_hour_resets": data.get("five_hour", {}).get("resets_at", ""),
+                        "five_hour_resets": data.get("five_hour", {}).get(
+                            "resets_at", ""
+                        ),
                         "seven_day": data.get("seven_day", {}).get("utilization", 0),
-                        "seven_day_resets": data.get("seven_day", {}).get("resets_at", ""),
+                        "seven_day_resets": data.get("seven_day", {}).get(
+                            "resets_at", ""
+                        ),
                     }
                     USAGE_CACHE_FILE.write_text(json.dumps(usage))
             except Exception:
@@ -174,7 +189,7 @@ def format_reset_time(iso_timestamp: str) -> str:
     if not iso_timestamp:
         return ""
     try:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         # Parse ISO format
         dt = datetime.fromisoformat(iso_timestamp.replace("Z", "+00:00"))
@@ -269,9 +284,15 @@ def main():
     model_data = data.get("model") or {}
     model = model_data.get("display_name", "?") if isinstance(model_data, dict) else "?"
     ctx_data = data.get("context_window") or {}
-    context_pct = int(ctx_data.get("used_percentage", 0) if isinstance(ctx_data, dict) else 0)
+    context_pct = int(
+        ctx_data.get("used_percentage", 0) if isinstance(ctx_data, dict) else 0
+    )
     workspace_data = data.get("workspace") or {}
-    current_dir = workspace_data.get("current_dir", "") if isinstance(workspace_data, dict) else ""
+    current_dir = (
+        workspace_data.get("current_dir", "")
+        if isinstance(workspace_data, dict)
+        else ""
+    )
     version = data.get("version", "") or ""
 
     # Detect theme and get colors

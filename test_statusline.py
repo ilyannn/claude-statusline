@@ -6,9 +6,8 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-import pytest
 
 # Add parent dir to path for import
 sys.path.insert(0, str(Path(__file__).parent))
@@ -131,14 +130,20 @@ class TestCheckForUpdate:
 class TestMainOutput:
     """Tests for main function output formatting."""
 
-    def run_with_input(self, data: dict, dark_mode: bool = True, usage: dict | None = None) -> str:
+    def run_with_input(
+        self, data: dict, dark_mode: bool = True, usage: dict | None = None
+    ) -> str:
         """Helper to run main() with given input data."""
         json_input = json.dumps(data)
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=dark_mode):
                 with patch.object(statusline, "get_git_branch", return_value=None):
-                    with patch.object(statusline, "check_for_update", return_value=None):
-                        with patch.object(statusline, "get_claude_usage", return_value=usage):
+                    with patch.object(
+                        statusline, "check_for_update", return_value=None
+                    ):
+                        with patch.object(
+                            statusline, "get_claude_usage", return_value=usage
+                        ):
                             # Capture stdout
                             captured = io.StringIO()
                             with patch("sys.stdout", captured):
@@ -197,8 +202,12 @@ class TestMainOutput:
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=True):
                 with patch.object(statusline, "get_git_branch", return_value="main"):
-                    with patch.object(statusline, "check_for_update", return_value=None):
-                        with patch.object(statusline, "get_claude_usage", return_value=None):
+                    with patch.object(
+                        statusline, "check_for_update", return_value=None
+                    ):
+                        with patch.object(
+                            statusline, "get_claude_usage", return_value=None
+                        ):
                             captured = io.StringIO()
                             with patch("sys.stdout", captured):
                                 statusline.main()
@@ -216,8 +225,12 @@ class TestMainOutput:
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=True):
                 with patch.object(statusline, "get_git_branch", return_value=None):
-                    with patch.object(statusline, "check_for_update", return_value="1.0.25"):
-                        with patch.object(statusline, "get_claude_usage", return_value=None):
+                    with patch.object(
+                        statusline, "check_for_update", return_value="1.0.25"
+                    ):
+                        with patch.object(
+                            statusline, "get_claude_usage", return_value=None
+                        ):
                             captured = io.StringIO()
                             with patch("sys.stdout", captured):
                                 statusline.main()
@@ -316,7 +329,32 @@ class TestFormatResetTime:
     def test_format_midnight(self):
         # Midnight UTC
         result = statusline.format_reset_time("2026-02-02T00:00:00+00:00")
-        assert result in ["12am", "1am", "2am", "3am", "4am", "5am", "6am", "7am", "8am", "9am", "10am", "11am", "12pm", "1pm", "2pm", "3pm", "4pm", "5pm", "6pm", "7pm", "8pm", "9pm", "10pm", "11pm"]  # depends on timezone
+        assert result in [
+            "12am",
+            "1am",
+            "2am",
+            "3am",
+            "4am",
+            "5am",
+            "6am",
+            "7am",
+            "8am",
+            "9am",
+            "10am",
+            "11am",
+            "12pm",
+            "1pm",
+            "2pm",
+            "3pm",
+            "4pm",
+            "5pm",
+            "6pm",
+            "7pm",
+            "8pm",
+            "9pm",
+            "10pm",
+            "11pm",
+        ]  # depends on timezone
 
     def test_format_noon(self):
         result = statusline.format_reset_time("2026-02-02T12:00:00+00:00")
@@ -352,7 +390,9 @@ class TestClaudeUsage:
 
     def test_usage_cache_with_reset_times(self, tmp_path):
         cache_file = tmp_path / "cache"
-        cache_file.write_text('{"five_hour": 30, "five_hour_resets": "2026-02-02T01:00:00+00:00"}')
+        cache_file.write_text(
+            '{"five_hour": 30, "five_hour_resets": "2026-02-02T01:00:00+00:00"}'
+        )
 
         with patch.object(statusline, "USAGE_CACHE_FILE", cache_file):
             result = statusline.get_claude_usage()
@@ -369,6 +409,7 @@ class TestClaudeUsage:
 
     def test_usage_cache_expired_no_creds(self, tmp_path):
         import time as time_module
+
         cache_file = tmp_path / "cache"
         cache_file.write_text('{"five_hour": 30}')
         # Set mtime to 10 minutes ago
@@ -396,14 +437,9 @@ class TestGetClaudeOAuthToken:
     """Tests for OAuth token retrieval."""
 
     def test_token_extraction(self):
-        mock_creds = json.dumps({
-            "claudeAiOauth": {"accessToken": "test-token-123"}
-        })
+        mock_creds = json.dumps({"claudeAiOauth": {"accessToken": "test-token-123"}})
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=0,
-                stdout=mock_creds
-            )
+            mock_run.return_value = MagicMock(returncode=0, stdout=mock_creds)
             result = statusline.get_claude_oauth_token()
             assert result == "test-token-123"
 
@@ -422,8 +458,7 @@ class TestGetClaudeOAuthToken:
     def test_missing_oauth_key(self):
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(
-                returncode=0,
-                stdout=json.dumps({"otherKey": "value"})
+                returncode=0, stdout=json.dumps({"otherKey": "value"})
             )
             result = statusline.get_claude_oauth_token()
             assert result is None
@@ -444,8 +479,12 @@ class TestInputParsing:
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=True):
                 with patch.object(statusline, "get_git_branch", return_value=None):
-                    with patch.object(statusline, "check_for_update", return_value=None):
-                        with patch.object(statusline, "get_claude_usage", return_value=None):
+                    with patch.object(
+                        statusline, "check_for_update", return_value=None
+                    ):
+                        with patch.object(
+                            statusline, "get_claude_usage", return_value=None
+                        ):
                             captured = io.StringIO()
                             with patch("sys.stdout", captured):
                                 statusline.main()
@@ -472,7 +511,10 @@ class TestInputParsing:
         assert "◐ 0%" in output
 
     def test_float_percentage_truncated(self):
-        data = {"model": {"display_name": "Opus"}, "context_window": {"used_percentage": 42.7}}
+        data = {
+            "model": {"display_name": "Opus"},
+            "context_window": {"used_percentage": 42.7},
+        }
         output = self.run_main(data)
         assert "◐ 42%" in output  # Truncated, not rounded
 
@@ -491,13 +533,20 @@ class TestColorThresholds:
     """Tests for exact color threshold boundaries."""
 
     def run_with_context(self, pct: int, dark_mode: bool = True) -> str:
-        data = {"model": {"display_name": "Opus"}, "context_window": {"used_percentage": pct}}
+        data = {
+            "model": {"display_name": "Opus"},
+            "context_window": {"used_percentage": pct},
+        }
         json_input = json.dumps(data)
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=dark_mode):
                 with patch.object(statusline, "get_git_branch", return_value=None):
-                    with patch.object(statusline, "check_for_update", return_value=None):
-                        with patch.object(statusline, "get_claude_usage", return_value=None):
+                    with patch.object(
+                        statusline, "check_for_update", return_value=None
+                    ):
+                        with patch.object(
+                            statusline, "get_claude_usage", return_value=None
+                        ):
                             captured = io.StringIO()
                             with patch("sys.stdout", captured):
                                 statusline.main()
@@ -546,14 +595,21 @@ class TestUsageColorThresholds:
     """Tests for usage color threshold boundaries."""
 
     def run_with_usage(self, pct: int, dark_mode: bool = True) -> str:
-        data = {"model": {"display_name": "Opus"}, "context_window": {"used_percentage": 42}}
+        data = {
+            "model": {"display_name": "Opus"},
+            "context_window": {"used_percentage": 42},
+        }
         usage = {"five_hour": pct}
         json_input = json.dumps(data)
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=dark_mode):
                 with patch.object(statusline, "get_git_branch", return_value=None):
-                    with patch.object(statusline, "check_for_update", return_value=None):
-                        with patch.object(statusline, "get_claude_usage", return_value=usage):
+                    with patch.object(
+                        statusline, "check_for_update", return_value=None
+                    ):
+                        with patch.object(
+                            statusline, "get_claude_usage", return_value=usage
+                        ):
                             captured = io.StringIO()
                             with patch("sys.stdout", captured):
                                 statusline.main()
@@ -601,8 +657,12 @@ class TestOutputOrder:
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=True):
                 with patch.object(statusline, "get_git_branch", return_value="main"):
-                    with patch.object(statusline, "check_for_update", return_value="2.0.0"):
-                        with patch.object(statusline, "get_claude_usage", return_value=usage):
+                    with patch.object(
+                        statusline, "check_for_update", return_value="2.0.0"
+                    ):
+                        with patch.object(
+                            statusline, "get_claude_usage", return_value=usage
+                        ):
                             captured = io.StringIO()
                             with patch("sys.stdout", captured):
                                 statusline.main()
@@ -628,8 +688,12 @@ class TestOutputOrder:
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=True):
                 with patch.object(statusline, "get_git_branch", return_value="main"):
-                    with patch.object(statusline, "check_for_update", return_value=None):
-                        with patch.object(statusline, "get_claude_usage", return_value=None):
+                    with patch.object(
+                        statusline, "check_for_update", return_value=None
+                    ):
+                        with patch.object(
+                            statusline, "get_claude_usage", return_value=None
+                        ):
                             captured = io.StringIO()
                             with patch("sys.stdout", captured):
                                 statusline.main()
@@ -637,8 +701,9 @@ class TestOutputOrder:
 
         # Remove ANSI codes for checking structure
         import re
-        clean = re.sub(r'\033\[[0-9;]*m', '', output)
-        parts = clean.split(' ')
+
+        clean = re.sub(r"\033\[[0-9;]*m", "", output)
+        parts = clean.split(" ")
         # Should have: ◐, 42%, ✦, Opus, ⎇, main
         assert len(parts) >= 4
 
@@ -649,19 +714,13 @@ class TestDarkModeDetection:
     def test_macos_dark_mode_detected(self):
         with patch.dict(os.environ, {}, clear=True):
             with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MagicMock(
-                    stdout="Dark\n",
-                    returncode=0
-                )
+                mock_run.return_value = MagicMock(stdout="Dark\n", returncode=0)
                 assert statusline.detect_dark_mode() is True
 
     def test_macos_light_mode_detected(self):
         with patch.dict(os.environ, {}, clear=True):
             with patch("subprocess.run") as mock_run:
-                mock_run.return_value = MagicMock(
-                    stdout="Light\n",
-                    returncode=0
-                )
+                mock_run.return_value = MagicMock(stdout="Light\n", returncode=0)
                 # Command succeeds but returns non-"Dark" value
                 assert statusline.detect_dark_mode() is False
 
@@ -697,10 +756,13 @@ class TestDarkModeDetection:
             assert statusline.detect_dark_mode() is False
 
     def test_env_override_takes_precedence_over_colorfgbg(self):
-        with patch.dict(os.environ, {
-            "CLAUDE_STATUSLINE_THEME": "light",
-            "COLORFGBG": "15;0"  # Would indicate dark
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "CLAUDE_STATUSLINE_THEME": "light",
+                "COLORFGBG": "15;0",  # Would indicate dark
+            },
+        ):
             assert statusline.detect_dark_mode() is False
 
 
@@ -710,10 +772,18 @@ class TestGetColorsCompleteness:
     def test_dark_mode_has_all_keys(self):
         colors = statusline.get_colors(dark_mode=True)
         required_keys = [
-            "reset", "bold", "dim",
-            "ctx_good", "ctx_warn", "ctx_crit",
-            "model", "git", "update",
-            "usage_good", "usage_warn", "usage_crit"
+            "reset",
+            "bold",
+            "dim",
+            "ctx_good",
+            "ctx_warn",
+            "ctx_crit",
+            "model",
+            "git",
+            "update",
+            "usage_good",
+            "usage_warn",
+            "usage_crit",
         ]
         for key in required_keys:
             assert key in colors, f"Missing key: {key}"
@@ -721,10 +791,18 @@ class TestGetColorsCompleteness:
     def test_light_mode_has_all_keys(self):
         colors = statusline.get_colors(dark_mode=False)
         required_keys = [
-            "reset", "bold", "dim",
-            "ctx_good", "ctx_warn", "ctx_crit",
-            "model", "git", "update",
-            "usage_good", "usage_warn", "usage_crit"
+            "reset",
+            "bold",
+            "dim",
+            "ctx_good",
+            "ctx_warn",
+            "ctx_crit",
+            "model",
+            "git",
+            "update",
+            "usage_good",
+            "usage_warn",
+            "usage_crit",
         ]
         for key in required_keys:
             assert key in colors, f"Missing key: {key}"
@@ -742,13 +820,23 @@ class TestGitBranchEdgeCases:
     def test_detached_head(self, tmp_path):
         # Create repo with a commit
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
-        subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True)
-        subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True
+        )
         (tmp_path / "file.txt").write_text("content")
         subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
-        subprocess.run(["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True
+        )
         # Detach HEAD
-        subprocess.run(["git", "checkout", "--detach"], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "checkout", "--detach"], cwd=tmp_path, capture_output=True
+        )
 
         branch = statusline.get_git_branch(str(tmp_path))
         # Detached HEAD returns empty string from git branch --show-current
@@ -756,13 +844,21 @@ class TestGitBranchEdgeCases:
 
     def test_branch_with_slash(self, tmp_path):
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
-        subprocess.run(["git", "checkout", "-b", "feature/my-feature"], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "checkout", "-b", "feature/my-feature"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
         branch = statusline.get_git_branch(str(tmp_path))
         assert branch == "feature/my-feature"
 
     def test_branch_with_unicode(self, tmp_path):
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
-        subprocess.run(["git", "checkout", "-b", "feature-émoji-🚀"], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "checkout", "-b", "feature-émoji-🚀"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
         branch = statusline.get_git_branch(str(tmp_path))
         assert branch == "feature-émoji-🚀"
 
@@ -788,7 +884,7 @@ class TestUpdateCheckEdgeCases:
 
     def test_cache_file_corrupted(self, tmp_path):
         cache_file = tmp_path / "cache"
-        cache_file.write_bytes(b'\x00\x01\x02')  # Binary garbage
+        cache_file.write_bytes(b"\x00\x01\x02")  # Binary garbage
 
         with patch.object(statusline, "CACHE_FILE", cache_file):
             result = statusline.check_for_update("1.0.23")
@@ -897,12 +993,14 @@ class TestIntegration:
     def test_script_runs_with_uv(self):
         """Test that the script runs via uv."""
         script_path = Path(__file__).parent / "statusline.py"
-        data = json.dumps({
-            "model": {"display_name": "Opus"},
-            "context_window": {"used_percentage": 42},
-            "workspace": {"current_dir": "/tmp"},
-            "version": "1.0.23",
-        })
+        data = json.dumps(
+            {
+                "model": {"display_name": "Opus"},
+                "context_window": {"used_percentage": 42},
+                "workspace": {"current_dir": "/tmp"},
+                "version": "1.0.23",
+            }
+        )
         result = subprocess.run(
             ["uv", "run", str(script_path)],
             input=data,
@@ -930,12 +1028,14 @@ class TestIntegration:
     def test_script_outputs_single_line(self):
         """Status line must be single line."""
         script_path = Path(__file__).parent / "statusline.py"
-        data = json.dumps({
-            "model": {"display_name": "Opus"},
-            "context_window": {"used_percentage": 42},
-            "workspace": {"current_dir": "/tmp"},
-            "version": "1.0.23",
-        })
+        data = json.dumps(
+            {
+                "model": {"display_name": "Opus"},
+                "context_window": {"used_percentage": 42},
+                "workspace": {"current_dir": "/tmp"},
+                "version": "1.0.23",
+            }
+        )
         result = subprocess.run(
             ["uv", "run", str(script_path)],
             input=data,
@@ -943,25 +1043,30 @@ class TestIntegration:
             text=True,
             timeout=10,
         )
-        lines = result.stdout.strip().split('\n')
+        lines = result.stdout.strip().split("\n")
         assert len(lines) == 1
 
     def test_script_with_all_fields(self):
         """Test with complete input data."""
         script_path = Path(__file__).parent / "statusline.py"
-        data = json.dumps({
-            "model": {"id": "claude-opus-4", "display_name": "Opus"},
-            "context_window": {
-                "used_percentage": 55.5,
-                "context_window_size": 200000,
-                "total_input_tokens": 50000,
-                "total_output_tokens": 10000,
-            },
-            "workspace": {"current_dir": "/tmp", "project_dir": "/home/user/project"},
-            "version": "2.1.29",
-            "session_id": "abc-123",
-            "cost": {"total_cost_usd": 0.50},
-        })
+        data = json.dumps(
+            {
+                "model": {"id": "claude-opus-4", "display_name": "Opus"},
+                "context_window": {
+                    "used_percentage": 55.5,
+                    "context_window_size": 200000,
+                    "total_input_tokens": 50000,
+                    "total_output_tokens": 10000,
+                },
+                "workspace": {
+                    "current_dir": "/tmp",
+                    "project_dir": "/home/user/project",
+                },
+                "version": "2.1.29",
+                "session_id": "abc-123",
+                "cost": {"total_cost_usd": 0.50},
+            }
+        )
         result = subprocess.run(
             ["uv", "run", str(script_path)],
             input=data,
@@ -976,10 +1081,12 @@ class TestIntegration:
     def test_script_no_stderr_on_success(self):
         """Script should not output to stderr on success."""
         script_path = Path(__file__).parent / "statusline.py"
-        data = json.dumps({
-            "model": {"display_name": "Opus"},
-            "context_window": {"used_percentage": 42},
-        })
+        data = json.dumps(
+            {
+                "model": {"display_name": "Opus"},
+                "context_window": {"used_percentage": 42},
+            }
+        )
         result = subprocess.run(
             ["uv", "run", str(script_path)],
             input=data,
