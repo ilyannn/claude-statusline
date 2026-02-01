@@ -16,13 +16,13 @@ Custom status line script for Claude Code displaying context usage, model, git b
 
 ## Installation
 
-Add to `~/.claude/settings.json`:
+Add to `~/.claude/settings.json` (example using [uv](https://docs.astral.sh/uv/)):
 
 ```json
 {
   "statusLine": {
     "type": "command",
-    "command": "uv run ~/Code/claude-statusline/statusline.py"
+    "command": "uv run /path/to/statusline.py"
   }
 }
 ```
