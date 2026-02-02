@@ -190,13 +190,14 @@ def format_reset_time(iso_timestamp: str) -> str:
     if not iso_timestamp:
         return ""
     try:
-        from datetime import datetime
+        from datetime import datetime, timedelta
 
-        # Parse ISO format
+        # Parse ISO format and convert to local time
         dt = datetime.fromisoformat(iso_timestamp.replace("Z", "+00:00"))
-        # Convert to local time
         local_dt = dt.astimezone()
-        # Format as hour with am/pm
+        # Round up to next hour if there are any minutes/seconds
+        if local_dt.minute > 0 or local_dt.second > 0:
+            local_dt = local_dt + timedelta(hours=1)
         hour = local_dt.hour
         if hour == 0:
             return "12am"
