@@ -211,38 +211,46 @@ def format_reset_time(iso_timestamp: str) -> str:
         return ""
 
 
-def get_git_branch(directory: str) -> str | None:
-    """Get current git branch if in a git repo."""
+def get_git_status(directory: str) -> tuple[str | None, bool]:
+    """Get current git branch and dirty status in a single call."""
     if not directory or not Path(directory).is_dir():
-        return None
+        return None, False
     try:
         result = subprocess.run(
-            ["git", "branch", "--show-current"],
+            ["git", "status", "--porcelain", "-b"],
             capture_output=True,
             text=True,
             timeout=1,
             cwd=directory,
         )
-        if result.returncode == 0 and result.stdout.strip():
-            return result.stdout.strip()
-    except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
-        pass
-    return None
+        if result.returncode != 0 or not result.stdout.strip():
+            return None, False
 
+        lines = result.stdout.splitlines()
+        header = lines[0]  # e.g. "## main...origin/main"
+        dirty = len(lines) > 1
 
-def is_git_dirty(directory: str) -> bool:
-    """Check if the git repo has uncommitted changes."""
-    try:
-        result = subprocess.run(
-            ["git", "status", "--porcelain"],
-            capture_output=True,
-            text=True,
-            timeout=1,
-            cwd=directory,
-        )
-        return result.returncode == 0 and bool(result.stdout.strip())
+        if not header.startswith("## "):
+            return None, dirty
+
+        branch_info = header[3:]
+
+        # Detached HEAD: "## HEAD (no branch)"
+        if branch_info.startswith("HEAD (no branch)"):
+            return None, dirty
+
+        # New repo: "## No commits yet on main"
+        if " on " in branch_info and (
+            "No commits yet" in branch_info or "Initial commit" in branch_info
+        ):
+            return branch_info.split(" on ", 1)[1], dirty
+
+        # Normal: "main" or "main...origin/main"
+        branch = branch_info.split("...")[0]
+        return branch if branch else None, dirty
+
     except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
-        return False
+        return None, False
 
 
 def check_for_update(current_version: str) -> str | None:
@@ -339,10 +347,10 @@ def main():
     parts.append(f"{c['model']}✦ {model}{c['reset']}")
 
     # Git branch
-    branch = get_git_branch(current_dir)
+    branch, dirty = get_git_status(current_dir)
     if branch:
-        dirty = f"{c['ctx_warn']}*{c['reset']}" if is_git_dirty(current_dir) else ""
-        parts.append(f"{c['git']}⎇ {branch}{dirty}{c['reset']}")
+        dirty_mark = f"{c['ctx_warn']}*{c['reset']}" if dirty else ""
+        parts.append(f"{c['git']}⎇ {branch}{dirty_mark}{c['reset']}")
 
     # Claude.ai usage (5h limit)
     usage = get_claude_usage()

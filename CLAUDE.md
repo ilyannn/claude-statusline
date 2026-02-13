@@ -12,7 +12,7 @@ A Python script that generates a custom status line for Claude Code CLI.
 
 - `detect_dark_mode()` - Detects light/dark theme via env vars or macOS defaults
 - `get_colors(dark_mode)` - Returns ANSI color codes for current theme
-- `get_git_branch(directory)` - Gets current git branch if in a repo
+- `get_git_status(directory)` - Gets current git branch and dirty status in a single call
 - `get_claude_oauth_token()` - Reads OAuth token from macOS Keychain
 - `get_claude_usage()` - Fetches 5-hour usage from Anthropic API (cached 5 min)
 - `check_for_update(version)` - Checks npm for newer version (cached 1 hour)

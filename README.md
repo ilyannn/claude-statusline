@@ -20,7 +20,7 @@ Custom status line script for Claude Code displaying context usage, model, git b
 - macOS (Keychain access for OAuth, `defaults` for theme detection)
 - Python 3.11+ (standard library only, no pip install needed)
 - npm - for update version check (`npm view @anthropic-ai/claude-code version`)
-- git - for branch detection
+- git - for branch and dirty status detection
 
 **Development:**
 - [uv](https://docs.astral.sh/uv/) - to run tests
