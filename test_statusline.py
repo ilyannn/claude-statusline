@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-
 # Add parent dir to path for import
 sys.path.insert(0, str(Path(__file__).parent))
 import statusline
@@ -869,6 +868,43 @@ class TestGitBranchEdgeCases:
         )
         branch = statusline.get_git_branch(str(tmp_path))
         assert branch == "feature-émoji-🚀"
+
+
+class TestGetCacheDir:
+    """Tests for cache directory resolution."""
+
+    def test_xdg_cache_home_takes_priority(self, tmp_path):
+        xdg_dir = tmp_path / "xdg"
+        with patch.dict(os.environ, {"XDG_CACHE_HOME": str(xdg_dir)}):
+            result = statusline._get_cache_dir()
+        assert result == xdg_dir / "claude-statusline"
+        assert result.is_dir()
+
+    def test_falls_back_to_dot_cache(self, tmp_path):
+        with patch.dict(os.environ, {}, clear=True):
+            with patch.object(Path, "home", return_value=tmp_path):
+                result = statusline._get_cache_dir()
+        assert result == tmp_path / ".cache" / "claude-statusline"
+        assert result.is_dir()
+
+    def test_falls_back_to_library_caches(self, tmp_path):
+        with patch.dict(os.environ, {}, clear=True):
+            with patch.object(Path, "home", return_value=tmp_path):
+                # Make ~/.cache creation fail
+                dot_cache = tmp_path / ".cache"
+                dot_cache.touch()  # file, not dir — mkdir will fail
+                result = statusline._get_cache_dir()
+        assert result == tmp_path / "Library" / "Caches" / "claude-statusline"
+        assert result.is_dir()
+
+    def test_falls_back_to_tmp(self, tmp_path):
+        with patch.dict(os.environ, {}, clear=True):
+            with patch.object(Path, "home", return_value=tmp_path):
+                # Block both ~/.cache and ~/Library/Caches
+                (tmp_path / ".cache").touch()
+                (tmp_path / "Library").touch()
+                result = statusline._get_cache_dir()
+        assert result == Path("/tmp") / "claude-statusline"
 
 
 class TestUpdateCheckEdgeCases:
