@@ -9,11 +9,32 @@ import time
 import urllib.request
 from pathlib import Path
 
+
 # Cache settings
-CACHE_FILE = Path("/tmp/claude-update-check")
+def _get_cache_dir() -> Path:
+    """Get cache directory: $XDG_CACHE_HOME > ~/.cache > ~/Library/Caches > /tmp."""
+    for candidate in [
+        os.environ.get("XDG_CACHE_HOME"),
+        Path.home() / ".cache",
+        Path.home() / "Library" / "Caches",
+        "/tmp",
+    ]:
+        if candidate is None:
+            continue
+        cache_dir = Path(candidate) / "claude-statusline"
+        try:
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            return cache_dir
+        except OSError:
+            continue
+    return Path("/tmp")
+
+
+CACHE_DIR = _get_cache_dir()
+CACHE_FILE = CACHE_DIR / "update-check"
 CACHE_MAX_AGE = 3600  # 1 hour
 
-USAGE_CACHE_FILE = Path("/tmp/claude-usage-cache")
+USAGE_CACHE_FILE = CACHE_DIR / "usage-cache"
 USAGE_CACHE_MAX_AGE = 300  # 5 minutes
 
 
@@ -261,7 +282,9 @@ def check_for_update(current_version: str) -> str | None:
         if cache_age < CACHE_MAX_AGE:
             content = CACHE_FILE.read_text().strip()
             if content.startswith("update:"):
-                return content[7:]  # Return version after "update:"
+                cached_version = content[7:]
+                if cached_version != current_version:
+                    return cached_version
             return None
 
     # Cache expired or doesn't exist - check in background
@@ -293,7 +316,9 @@ def check_for_update(current_version: str) -> str | None:
     if CACHE_FILE.exists():
         content = CACHE_FILE.read_text().strip()
         if content.startswith("update:"):
-            return content[7:]
+            cached_version = content[7:]
+            if cached_version != current_version:
+                return cached_version
     return None
 
 
@@ -381,4 +406,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == "--print-cache-dir":
+        print(CACHE_DIR)
+    else:
+        main()

@@ -195,6 +195,14 @@ class TestCheckForUpdate:
             result = statusline.check_for_update("1.0.23")
             assert result == "1.0.25"
 
+    def test_cache_returns_none_when_already_on_cached_version(self, tmp_path):
+        cache_file = tmp_path / "cache"
+        cache_file.write_text("update:1.0.25")
+
+        with patch.object(statusline, "CACHE_FILE", cache_file):
+            result = statusline.check_for_update("1.0.25")
+            assert result is None
+
     def test_cache_returns_current(self, tmp_path):
         cache_file = tmp_path / "cache"
         cache_file.write_text("current")
@@ -992,6 +1000,43 @@ class TestGitStatusEdgeCases:
         )
         branch, _ = statusline.get_git_status(str(tmp_path))
         assert branch == "feature-émoji-🚀"
+
+
+class TestGetCacheDir:
+    """Tests for cache directory resolution."""
+
+    def test_xdg_cache_home_takes_priority(self, tmp_path):
+        xdg_dir = tmp_path / "xdg"
+        with patch.dict(os.environ, {"XDG_CACHE_HOME": str(xdg_dir)}):
+            result = statusline._get_cache_dir()
+        assert result == xdg_dir / "claude-statusline"
+        assert result.is_dir()
+
+    def test_falls_back_to_dot_cache(self, tmp_path):
+        with patch.dict(os.environ, {}, clear=True):
+            with patch.object(Path, "home", return_value=tmp_path):
+                result = statusline._get_cache_dir()
+        assert result == tmp_path / ".cache" / "claude-statusline"
+        assert result.is_dir()
+
+    def test_falls_back_to_library_caches(self, tmp_path):
+        with patch.dict(os.environ, {}, clear=True):
+            with patch.object(Path, "home", return_value=tmp_path):
+                # Make ~/.cache creation fail
+                dot_cache = tmp_path / ".cache"
+                dot_cache.touch()  # file, not dir — mkdir will fail
+                result = statusline._get_cache_dir()
+        assert result == tmp_path / "Library" / "Caches" / "claude-statusline"
+        assert result.is_dir()
+
+    def test_falls_back_to_tmp(self, tmp_path):
+        with patch.dict(os.environ, {}, clear=True):
+            with patch.object(Path, "home", return_value=tmp_path):
+                # Block both ~/.cache and ~/Library/Caches
+                (tmp_path / ".cache").touch()
+                (tmp_path / "Library").touch()
+                result = statusline._get_cache_dir()
+        assert result == Path("/tmp") / "claude-statusline"
 
 
 class TestMainOutputDirtyIndicator:

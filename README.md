@@ -82,10 +82,12 @@ just cache-status  # Check cache age
 
 ## Caching & Performance
 
-| Check | Cache Duration | Location |
-|-------|---------------|----------|
-| Claude.ai usage | 5 minutes | `/tmp/claude-usage-cache` |
-| Update check | 1 hour | `/tmp/claude-update-check` |
+| Check | Cache Duration | File |
+|-------|---------------|------|
+| Claude.ai usage | 5 minutes | `usage-cache` |
+| Update check | 1 hour | `update-check` |
+
+Cache directory resolution: `$XDG_CACHE_HOME/claude-statusline` > `~/.cache/claude-statusline` > `~/Library/Caches/claude-statusline` > `/tmp`.
 
 All API calls run in background via `fork()` - they never block the status line.
 
