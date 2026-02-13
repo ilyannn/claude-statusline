@@ -110,6 +110,14 @@ class TestCheckForUpdate:
             result = statusline.check_for_update("1.0.23")
             assert result == "1.0.25"
 
+    def test_cache_returns_none_when_already_on_cached_version(self, tmp_path):
+        cache_file = tmp_path / "cache"
+        cache_file.write_text("update:1.0.25")
+
+        with patch.object(statusline, "CACHE_FILE", cache_file):
+            result = statusline.check_for_update("1.0.25")
+            assert result is None
+
     def test_cache_returns_current(self, tmp_path):
         cache_file = tmp_path / "cache"
         cache_file.write_text("current")

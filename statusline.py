@@ -238,7 +238,9 @@ def check_for_update(current_version: str) -> str | None:
         if cache_age < CACHE_MAX_AGE:
             content = CACHE_FILE.read_text().strip()
             if content.startswith("update:"):
-                return content[7:]  # Return version after "update:"
+                cached_version = content[7:]
+                if cached_version != current_version:
+                    return cached_version
             return None
 
     # Cache expired or doesn't exist - check in background
@@ -270,7 +272,9 @@ def check_for_update(current_version: str) -> str | None:
     if CACHE_FILE.exists():
         content = CACHE_FILE.read_text().strip()
         if content.startswith("update:"):
-            return content[7:]
+            cached_version = content[7:]
+            if cached_version != current_version:
+                return cached_version
     return None
 
 
