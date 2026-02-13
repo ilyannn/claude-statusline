@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-
 # Add parent dir to path for import
 sys.path.insert(0, str(Path(__file__).parent))
 import statusline
@@ -861,6 +860,208 @@ class TestGitBranchEdgeCases:
         )
         branch = statusline.get_git_branch(str(tmp_path))
         assert branch == "feature-émoji-🚀"
+
+
+class TestIsGitDirty:
+    """Tests for git dirty detection."""
+
+    def test_clean_repo(self, tmp_path):
+        subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        (tmp_path / "file.txt").write_text("content")
+        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True
+        )
+        assert statusline.is_git_dirty(str(tmp_path)) is False
+
+    def test_dirty_repo_uncommitted_changes(self, tmp_path):
+        subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        (tmp_path / "file.txt").write_text("content")
+        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True
+        )
+        # Modify tracked file
+        (tmp_path / "file.txt").write_text("changed")
+        assert statusline.is_git_dirty(str(tmp_path)) is True
+
+    def test_dirty_repo_untracked_files(self, tmp_path):
+        subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        (tmp_path / "file.txt").write_text("content")
+        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True
+        )
+        # Add untracked file
+        (tmp_path / "new.txt").write_text("untracked")
+        assert statusline.is_git_dirty(str(tmp_path)) is True
+
+    def test_dirty_repo_staged_changes(self, tmp_path):
+        subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        (tmp_path / "file.txt").write_text("content")
+        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True
+        )
+        # Stage a change
+        (tmp_path / "file.txt").write_text("changed")
+        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+        assert statusline.is_git_dirty(str(tmp_path)) is True
+
+    def test_not_a_git_repo(self, tmp_path):
+        assert statusline.is_git_dirty(str(tmp_path)) is False
+
+    def test_git_command_timeout(self, tmp_path):
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.TimeoutExpired("git", 1)
+            assert statusline.is_git_dirty(str(tmp_path)) is False
+
+    def test_git_command_not_found(self, tmp_path):
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = FileNotFoundError()
+            assert statusline.is_git_dirty(str(tmp_path)) is False
+
+
+class TestMainOutputDirtyIndicator:
+    """Tests for dirty indicator in main output."""
+
+    def test_dirty_repo_shows_asterisk(self):
+        data = {
+            "model": {"display_name": "Opus"},
+            "context_window": {"used_percentage": 42},
+            "workspace": {"current_dir": "/test"},
+            "version": "1.0.23",
+        }
+        json_input = json.dumps(data)
+        with patch("sys.stdin", io.StringIO(json_input)):
+            with patch.object(statusline, "detect_dark_mode", return_value=True):
+                with patch.object(statusline, "get_git_branch", return_value="main"):
+                    with patch.object(statusline, "is_git_dirty", return_value=True):
+                        with patch.object(
+                            statusline, "check_for_update", return_value=None
+                        ):
+                            with patch.object(
+                                statusline, "get_claude_usage", return_value=None
+                            ):
+                                captured = io.StringIO()
+                                with patch("sys.stdout", captured):
+                                    statusline.main()
+                                output = captured.getvalue().strip()
+        assert "⎇ main" in output
+        assert "*" in output
+
+    def test_clean_repo_no_asterisk(self):
+        data = {
+            "model": {"display_name": "Opus"},
+            "context_window": {"used_percentage": 42},
+            "workspace": {"current_dir": "/test"},
+            "version": "1.0.23",
+        }
+        json_input = json.dumps(data)
+        with patch("sys.stdin", io.StringIO(json_input)):
+            with patch.object(statusline, "detect_dark_mode", return_value=True):
+                with patch.object(statusline, "get_git_branch", return_value="main"):
+                    with patch.object(statusline, "is_git_dirty", return_value=False):
+                        with patch.object(
+                            statusline, "check_for_update", return_value=None
+                        ):
+                            with patch.object(
+                                statusline, "get_claude_usage", return_value=None
+                            ):
+                                captured = io.StringIO()
+                                with patch("sys.stdout", captured):
+                                    statusline.main()
+                                output = captured.getvalue().strip()
+        assert "⎇ main" in output
+        assert "*" not in output
+
+    def test_no_branch_skips_dirty_check(self):
+        data = {
+            "model": {"display_name": "Opus"},
+            "context_window": {"used_percentage": 42},
+            "workspace": {"current_dir": "/test"},
+            "version": "1.0.23",
+        }
+        json_input = json.dumps(data)
+        with patch("sys.stdin", io.StringIO(json_input)):
+            with patch.object(statusline, "detect_dark_mode", return_value=True):
+                with patch.object(statusline, "get_git_branch", return_value=None):
+                    with patch.object(statusline, "is_git_dirty") as mock_dirty:
+                        with patch.object(
+                            statusline, "check_for_update", return_value=None
+                        ):
+                            with patch.object(
+                                statusline, "get_claude_usage", return_value=None
+                            ):
+                                captured = io.StringIO()
+                                with patch("sys.stdout", captured):
+                                    statusline.main()
+        mock_dirty.assert_not_called()
+
+    def test_dirty_asterisk_uses_warning_color(self):
+        data = {
+            "model": {"display_name": "Opus"},
+            "context_window": {"used_percentage": 42},
+            "workspace": {"current_dir": "/test"},
+            "version": "1.0.23",
+        }
+        json_input = json.dumps(data)
+        with patch("sys.stdin", io.StringIO(json_input)):
+            with patch.object(statusline, "detect_dark_mode", return_value=True):
+                with patch.object(statusline, "get_git_branch", return_value="main"):
+                    with patch.object(statusline, "is_git_dirty", return_value=True):
+                        with patch.object(
+                            statusline, "check_for_update", return_value=None
+                        ):
+                            with patch.object(
+                                statusline, "get_claude_usage", return_value=None
+                            ):
+                                captured = io.StringIO()
+                                with patch("sys.stdout", captured):
+                                    statusline.main()
+                                output = captured.getvalue().strip()
+        # The * should be preceded by the warning color (bright yellow)
+        assert "\033[93m*" in output
 
 
 class TestUpdateCheckEdgeCases:

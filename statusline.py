@@ -230,6 +230,21 @@ def get_git_branch(directory: str) -> str | None:
     return None
 
 
+def is_git_dirty(directory: str) -> bool:
+    """Check if the git repo has uncommitted changes."""
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            timeout=1,
+            cwd=directory,
+        )
+        return result.returncode == 0 and bool(result.stdout.strip())
+    except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+        return False
+
+
 def check_for_update(current_version: str) -> str | None:
     """Check if update is available. Uses cache to avoid frequent npm calls."""
     # Check cache age
@@ -326,7 +341,8 @@ def main():
     # Git branch
     branch = get_git_branch(current_dir)
     if branch:
-        parts.append(f"{c['git']}⎇ {branch}{c['reset']}")
+        dirty = f"{c['ctx_warn']}*{c['reset']}" if is_git_dirty(current_dir) else ""
+        parts.append(f"{c['git']}⎇ {branch}{dirty}{c['reset']}")
 
     # Claude.ai usage (5h limit)
     usage = get_claude_usage()
