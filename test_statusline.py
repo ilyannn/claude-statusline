@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-
 # Add parent dir to path for import
 sys.path.insert(0, str(Path(__file__).parent))
 import statusline
@@ -223,7 +222,9 @@ class TestMainOutput:
         json_input = json.dumps(data)
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=dark_mode):
-                with patch.object(statusline, "get_git_status", return_value=(None, False)):
+                with patch.object(
+                    statusline, "get_git_status", return_value=(None, False)
+                ):
                     with patch.object(
                         statusline, "check_for_update", return_value=None
                     ):
@@ -287,7 +288,9 @@ class TestMainOutput:
         json_input = json.dumps(data)
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=True):
-                with patch.object(statusline, "get_git_status", return_value=("main", False)):
+                with patch.object(
+                    statusline, "get_git_status", return_value=("main", False)
+                ):
                     with patch.object(
                         statusline, "check_for_update", return_value=None
                     ):
@@ -310,7 +313,9 @@ class TestMainOutput:
         json_input = json.dumps(data)
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=True):
-                with patch.object(statusline, "get_git_status", return_value=(None, False)):
+                with patch.object(
+                    statusline, "get_git_status", return_value=(None, False)
+                ):
                     with patch.object(
                         statusline, "check_for_update", return_value="1.0.25"
                     ):
@@ -564,7 +569,9 @@ class TestInputParsing:
         json_input = json.dumps(data) if isinstance(data, dict) else data
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=True):
-                with patch.object(statusline, "get_git_status", return_value=(None, False)):
+                with patch.object(
+                    statusline, "get_git_status", return_value=(None, False)
+                ):
                     with patch.object(
                         statusline, "check_for_update", return_value=None
                     ):
@@ -626,7 +633,9 @@ class TestColorThresholds:
         json_input = json.dumps(data)
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=dark_mode):
-                with patch.object(statusline, "get_git_status", return_value=(None, False)):
+                with patch.object(
+                    statusline, "get_git_status", return_value=(None, False)
+                ):
                     with patch.object(
                         statusline, "check_for_update", return_value=None
                     ):
@@ -689,7 +698,9 @@ class TestUsageColorThresholds:
         json_input = json.dumps(data)
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=dark_mode):
-                with patch.object(statusline, "get_git_status", return_value=(None, False)):
+                with patch.object(
+                    statusline, "get_git_status", return_value=(None, False)
+                ):
                     with patch.object(
                         statusline, "check_for_update", return_value=None
                     ):
@@ -742,7 +753,9 @@ class TestOutputOrder:
         json_input = json.dumps(data)
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=True):
-                with patch.object(statusline, "get_git_status", return_value=("main", False)):
+                with patch.object(
+                    statusline, "get_git_status", return_value=("main", False)
+                ):
                     with patch.object(
                         statusline, "check_for_update", return_value="2.0.0"
                     ):
@@ -773,7 +786,9 @@ class TestOutputOrder:
         json_input = json.dumps(data)
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=True):
-                with patch.object(statusline, "get_git_status", return_value=("main", False)):
+                with patch.object(
+                    statusline, "get_git_status", return_value=("main", False)
+                ):
                     with patch.object(
                         statusline, "check_for_update", return_value=None
                     ):
