@@ -10,7 +10,7 @@ Custom status line script for Claude Code displaying context usage, model, git b
 
 - `◐ 42%` - Context window usage (color-coded: green <50%, yellow 50-74%, red ≥75%)
 - `✦ Opus` - Current model
-- `⎇ main` - Git branch (only shown in git repos)
+- `⎇ main` - Git branch (only shown in git repos; dirty status marked with a `*`)
 - `⏱ 40%→2am` - Claude.ai 5-hour usage + reset time (color-coded: green <50%, yellow 50-79%, red ≥80%)
 - `↑1.0.24` - Update available (only shown when newer version exists)
 
@@ -20,7 +20,7 @@ Custom status line script for Claude Code displaying context usage, model, git b
 - macOS (Keychain access for OAuth, `defaults` for theme detection)
 - Python 3.11+ (standard library only, no pip install needed)
 - npm - for update version check (`npm view @anthropic-ai/claude-code version`)
-- git - for branch detection
+- git - for branch and dirty status detection
 
 **Development:**
 - [uv](https://docs.astral.sh/uv/) - to run tests
