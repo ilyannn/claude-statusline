@@ -71,8 +71,8 @@ class TestGetColors:
         assert "32m" in colors["ctx_good"]  # standard green
 
 
-class TestGetGitBranch:
-    """Tests for git branch detection."""
+class TestGetGitStatus:
+    """Tests for git branch and dirty detection."""
 
     def test_valid_git_repo(self, tmp_path):
         # Create a git repo
@@ -82,20 +82,106 @@ class TestGetGitBranch:
             cwd=tmp_path,
             capture_output=True,
         )
-        branch = statusline.get_git_branch(str(tmp_path))
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        (tmp_path / "file.txt").write_text("content")
+        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True
+        )
+        branch, dirty = statusline.get_git_status(str(tmp_path))
         assert branch == "test-branch"
+        assert dirty is False
 
     def test_not_a_git_repo(self, tmp_path):
-        branch = statusline.get_git_branch(str(tmp_path))
+        branch, dirty = statusline.get_git_status(str(tmp_path))
         assert branch is None
+        assert dirty is False
 
     def test_invalid_directory(self):
-        branch = statusline.get_git_branch("/nonexistent/path")
+        branch, dirty = statusline.get_git_status("/nonexistent/path")
         assert branch is None
+        assert dirty is False
 
     def test_empty_directory_string(self):
-        branch = statusline.get_git_branch("")
+        branch, dirty = statusline.get_git_status("")
         assert branch is None
+        assert dirty is False
+
+    def test_dirty_repo_uncommitted_changes(self, tmp_path):
+        subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        (tmp_path / "file.txt").write_text("content")
+        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True
+        )
+        (tmp_path / "file.txt").write_text("changed")
+        branch, dirty = statusline.get_git_status(str(tmp_path))
+        assert branch is not None
+        assert dirty is True
+
+    def test_dirty_repo_untracked_files(self, tmp_path):
+        subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        (tmp_path / "file.txt").write_text("content")
+        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True
+        )
+        (tmp_path / "new.txt").write_text("untracked")
+        branch, dirty = statusline.get_git_status(str(tmp_path))
+        assert branch is not None
+        assert dirty is True
+
+    def test_dirty_repo_staged_changes(self, tmp_path):
+        subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        (tmp_path / "file.txt").write_text("content")
+        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True
+        )
+        (tmp_path / "file.txt").write_text("changed")
+        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+        branch, dirty = statusline.get_git_status(str(tmp_path))
+        assert branch is not None
+        assert dirty is True
 
 
 class TestCheckForUpdate:
@@ -144,7 +230,9 @@ class TestMainOutput:
         json_input = json.dumps(data)
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=dark_mode):
-                with patch.object(statusline, "get_git_branch", return_value=None):
+                with patch.object(
+                    statusline, "get_git_status", return_value=(None, False)
+                ):
                     with patch.object(
                         statusline, "check_for_update", return_value=None
                     ):
@@ -208,7 +296,9 @@ class TestMainOutput:
         json_input = json.dumps(data)
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=True):
-                with patch.object(statusline, "get_git_branch", return_value="main"):
+                with patch.object(
+                    statusline, "get_git_status", return_value=("main", False)
+                ):
                     with patch.object(
                         statusline, "check_for_update", return_value=None
                     ):
@@ -231,7 +321,9 @@ class TestMainOutput:
         json_input = json.dumps(data)
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=True):
-                with patch.object(statusline, "get_git_branch", return_value=None):
+                with patch.object(
+                    statusline, "get_git_status", return_value=(None, False)
+                ):
                     with patch.object(
                         statusline, "check_for_update", return_value="1.0.25"
                     ):
@@ -485,7 +577,9 @@ class TestInputParsing:
         json_input = json.dumps(data) if isinstance(data, dict) else data
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=True):
-                with patch.object(statusline, "get_git_branch", return_value=None):
+                with patch.object(
+                    statusline, "get_git_status", return_value=(None, False)
+                ):
                     with patch.object(
                         statusline, "check_for_update", return_value=None
                     ):
@@ -547,7 +641,9 @@ class TestColorThresholds:
         json_input = json.dumps(data)
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=dark_mode):
-                with patch.object(statusline, "get_git_branch", return_value=None):
+                with patch.object(
+                    statusline, "get_git_status", return_value=(None, False)
+                ):
                     with patch.object(
                         statusline, "check_for_update", return_value=None
                     ):
@@ -610,7 +706,9 @@ class TestUsageColorThresholds:
         json_input = json.dumps(data)
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=dark_mode):
-                with patch.object(statusline, "get_git_branch", return_value=None):
+                with patch.object(
+                    statusline, "get_git_status", return_value=(None, False)
+                ):
                     with patch.object(
                         statusline, "check_for_update", return_value=None
                     ):
@@ -663,7 +761,9 @@ class TestOutputOrder:
         json_input = json.dumps(data)
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=True):
-                with patch.object(statusline, "get_git_branch", return_value="main"):
+                with patch.object(
+                    statusline, "get_git_status", return_value=("main", False)
+                ):
                     with patch.object(
                         statusline, "check_for_update", return_value="2.0.0"
                     ):
@@ -694,7 +794,9 @@ class TestOutputOrder:
         json_input = json.dumps(data)
         with patch("sys.stdin", io.StringIO(json_input)):
             with patch.object(statusline, "detect_dark_mode", return_value=True):
-                with patch.object(statusline, "get_git_branch", return_value="main"):
+                with patch.object(
+                    statusline, "get_git_status", return_value=("main", False)
+                ):
                     with patch.object(
                         statusline, "check_for_update", return_value=None
                     ):
@@ -821,8 +923,8 @@ class TestGetColorsCompleteness:
                 assert value.startswith("\033["), f"{key} is not an ANSI code: {value}"
 
 
-class TestGitBranchEdgeCases:
-    """Additional git branch tests."""
+class TestGitStatusEdgeCases:
+    """Additional git status tests."""
 
     def test_detached_head(self, tmp_path):
         # Create repo with a commit
@@ -845,9 +947,9 @@ class TestGitBranchEdgeCases:
             ["git", "checkout", "--detach"], cwd=tmp_path, capture_output=True
         )
 
-        branch = statusline.get_git_branch(str(tmp_path))
-        # Detached HEAD returns empty string from git branch --show-current
-        assert branch is None or branch == ""
+        branch, dirty = statusline.get_git_status(str(tmp_path))
+        assert branch is None
+        assert dirty is False
 
     def test_branch_with_slash(self, tmp_path):
         subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
@@ -856,7 +958,22 @@ class TestGitBranchEdgeCases:
             cwd=tmp_path,
             capture_output=True,
         )
-        branch = statusline.get_git_branch(str(tmp_path))
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        (tmp_path / "file.txt").write_text("content")
+        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True
+        )
+        branch, _ = statusline.get_git_status(str(tmp_path))
         assert branch == "feature/my-feature"
 
     def test_branch_with_unicode(self, tmp_path):
@@ -866,7 +983,22 @@ class TestGitBranchEdgeCases:
             cwd=tmp_path,
             capture_output=True,
         )
-        branch = statusline.get_git_branch(str(tmp_path))
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        (tmp_path / "file.txt").write_text("content")
+        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True
+        )
+        branch, _ = statusline.get_git_status(str(tmp_path))
         assert branch == "feature-émoji-🚀"
 
 
@@ -905,6 +1037,54 @@ class TestGetCacheDir:
                 (tmp_path / "Library").touch()
                 result = statusline._get_cache_dir()
         assert result == Path("/tmp") / "claude-statusline"
+
+
+class TestMainOutputDirtyIndicator:
+    """Tests for dirty indicator in main output."""
+
+    def run_main(self, git_status: tuple) -> str:
+        """Helper to run main with given git status."""
+        data = {
+            "model": {"display_name": "Opus"},
+            "context_window": {"used_percentage": 42},
+            "workspace": {"current_dir": "/test"},
+            "version": "1.0.23",
+        }
+        json_input = json.dumps(data)
+        with patch("sys.stdin", io.StringIO(json_input)):
+            with patch.object(statusline, "detect_dark_mode", return_value=True):
+                with patch.object(
+                    statusline, "get_git_status", return_value=git_status
+                ):
+                    with patch.object(
+                        statusline, "check_for_update", return_value=None
+                    ):
+                        with patch.object(
+                            statusline, "get_claude_usage", return_value=None
+                        ):
+                            captured = io.StringIO()
+                            with patch("sys.stdout", captured):
+                                statusline.main()
+                            return captured.getvalue().strip()
+
+    def test_dirty_repo_shows_asterisk(self):
+        output = self.run_main(("main", True))
+        assert "⎇ main" in output
+        assert "*" in output
+
+    def test_clean_repo_no_asterisk(self):
+        output = self.run_main(("main", False))
+        assert "⎇ main" in output
+        assert "*" not in output
+
+    def test_no_branch_no_git_section(self):
+        output = self.run_main((None, False))
+        assert "⎇" not in output
+
+    def test_dirty_asterisk_uses_warning_color(self):
+        output = self.run_main(("main", True))
+        # The * should be preceded by the warning color (bright yellow)
+        assert "\033[93m*" in output
 
 
 class TestUpdateCheckEdgeCases:
@@ -983,20 +1163,22 @@ class TestColorfgbgEdgeCases:
                 assert statusline.detect_dark_mode() is True
 
 
-class TestGitBranchExceptions:
-    """Test git branch exception handling."""
+class TestGitStatusExceptions:
+    """Test git status exception handling."""
 
     def test_git_command_timeout(self, tmp_path):
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = subprocess.TimeoutExpired("git", 1)
-            result = statusline.get_git_branch(str(tmp_path))
-            assert result is None
+            branch, dirty = statusline.get_git_status(str(tmp_path))
+            assert branch is None
+            assert dirty is False
 
     def test_git_command_not_found(self, tmp_path):
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError()
-            result = statusline.get_git_branch(str(tmp_path))
-            assert result is None
+            branch, dirty = statusline.get_git_status(str(tmp_path))
+            assert branch is None
+            assert dirty is False
 
 
 class TestCheckForUpdateExceptions:
