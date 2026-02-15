@@ -253,7 +253,7 @@ class TestMainOutput:
             "version": "1.0.23",
         }
         output = self.run_with_input(data)
-        assert "◐ 42%" in output
+        assert "◑ 42%" in output
         assert "✦ Opus" in output
 
     def test_context_low_green(self):
@@ -604,12 +604,12 @@ class TestInputParsing:
     def test_missing_context_window(self):
         data = {"model": {"display_name": "Opus"}}
         output = self.run_main(data)
-        assert "◐ 0%" in output  # Default to 0
+        assert "◔ 0%" in output  # Default to 0
 
     def test_missing_used_percentage(self):
         data = {"model": {"display_name": "Opus"}, "context_window": {}}
         output = self.run_main(data)
-        assert "◐ 0%" in output
+        assert "◔ 0%" in output
 
     def test_float_percentage_truncated(self):
         data = {
@@ -617,17 +617,17 @@ class TestInputParsing:
             "context_window": {"used_percentage": 42.7},
         }
         output = self.run_main(data)
-        assert "◐ 42%" in output  # Truncated, not rounded
+        assert "◑ 42%" in output  # Truncated, not rounded
 
     def test_empty_json_object(self):
         output = self.run_main({})
-        assert "◐ 0%" in output
+        assert "◔ 0%" in output
         assert "✦ ?" in output
 
     def test_null_values(self):
         data = {"model": None, "context_window": None}
         output = self.run_main(data)
-        assert "◐ 0%" in output
+        assert "◔ 0%" in output
 
 
 class TestColorThresholds:
@@ -658,40 +658,40 @@ class TestColorThresholds:
     # Context thresholds: <50 green, 50-74 yellow, >=75 red
     def test_context_49_is_green(self):
         output = self.run_with_context(49)
-        assert "\033[92m◐ 49%" in output
+        assert "\033[92m◑ 49%" in output
 
     def test_context_50_is_yellow(self):
         output = self.run_with_context(50)
-        assert "\033[93m◐ 50%" in output
+        assert "\033[93m◕ 50%" in output
 
     def test_context_74_is_yellow(self):
         output = self.run_with_context(74)
-        assert "\033[93m◐ 74%" in output
+        assert "\033[93m◕ 74%" in output
 
     def test_context_75_is_red(self):
         output = self.run_with_context(75)
-        assert "\033[91m◐ 75%" in output
+        assert "\033[91m● 75%" in output
 
     def test_context_0_is_green(self):
         output = self.run_with_context(0)
-        assert "\033[92m◐ 0%" in output
+        assert "\033[92m◔ 0%" in output
 
     def test_context_100_is_red(self):
         output = self.run_with_context(100)
-        assert "\033[91m◐ 100%" in output
+        assert "\033[91m● 100%" in output
 
     # Light mode colors
     def test_context_green_light_mode(self):
         output = self.run_with_context(30, dark_mode=False)
-        assert "\033[32m◐ 30%" in output  # standard green
+        assert "\033[32m◑ 30%" in output  # standard green
 
     def test_context_yellow_light_mode(self):
         output = self.run_with_context(60, dark_mode=False)
-        assert "\033[33m◐ 60%" in output  # standard yellow
+        assert "\033[33m◕ 60%" in output  # standard yellow
 
     def test_context_red_light_mode(self):
         output = self.run_with_context(80, dark_mode=False)
-        assert "\033[31m◐ 80%" in output  # standard red
+        assert "\033[31m● 80%" in output  # standard red
 
 
 class TestUsageColorThresholds:
@@ -776,7 +776,7 @@ class TestOutputOrder:
                             output = captured.getvalue().strip()
 
         # Find positions of each element
-        ctx_pos = output.find("◐")
+        ctx_pos = output.find("◑")
         model_pos = output.find("✦")
         git_pos = output.find("⎇")
         usage_pos = output.find("⏱")
@@ -813,7 +813,7 @@ class TestOutputOrder:
 
         clean = re.sub(r"\033\[[0-9;]*m", "", output)
         parts = clean.split(" ")
-        # Should have: ◐, 42%, ✦, Opus, ⎇, main
+        # Should have: ◑, 42%, ✦, Opus, ⎇, main
         assert len(parts) >= 4
 
 
@@ -1235,7 +1235,7 @@ class TestIntegration:
             timeout=10,
         )
         assert result.returncode == 0
-        assert "◐ 42%" in result.stdout
+        assert "◑ 42%" in result.stdout
         assert "Opus" in result.stdout
 
     def test_script_handles_empty_input(self):
@@ -1301,7 +1301,7 @@ class TestIntegration:
             timeout=10,
         )
         assert result.returncode == 0
-        assert "◐ 55%" in result.stdout
+        assert "◕ 55%" in result.stdout
         assert "Opus" in result.stdout
 
     def test_script_no_stderr_on_success(self):
