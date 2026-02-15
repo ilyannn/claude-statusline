@@ -5,10 +5,10 @@ Custom status line script for Claude Code displaying context usage, model, git b
 ## Output Format
 
 ```
-◐ 42% ✦ Opus ⎇ main ⏱ 40%→2am ↑1.0.24
+◑ 42% ✦ Opus ⎇ main ⏱ 40%→2am ↑1.0.24
 ```
 
-- `◐ 42%` - Context window usage (color-coded: green <50%, yellow 50-74%, red ≥75%)
+- `◔◑◕●` - Context window usage with fill-level icon (color-coded: green <50%, yellow 50-74%, red ≥75%)
 - `✦ Opus` - Current model
 - `⎇ main` - Git branch (only shown in git repos; dirty status marked with a `*`)
 - `⏱ 40%→2am` - Claude.ai 5-hour usage + reset time (color-coded: green <50%, yellow 50-79%, red ≥80%)

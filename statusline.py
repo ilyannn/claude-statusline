@@ -365,8 +365,16 @@ def main():
     # Build status parts
     parts = []
 
-    # Context percentage
-    parts.append(f"{ctx_color}◐ {context_pct}%{c['reset']}")
+    # Context percentage with fill-level icon
+    if context_pct < 25:
+        ctx_icon = "◔"
+    elif context_pct < 50:
+        ctx_icon = "◑"
+    elif context_pct < 75:
+        ctx_icon = "◕"
+    else:
+        ctx_icon = "●"
+    parts.append(f"{ctx_color}{ctx_icon} {context_pct}%{c['reset']}")
 
     # Model
     parts.append(f"{c['model']}✦ {model}{c['reset']}")

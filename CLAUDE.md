@@ -33,7 +33,7 @@ A Python script that generates a custom status line for Claude Code CLI.
 ## Output Format
 
 ```
-◐ 42% ✦ Opus ⎇ main ⏱ 40%→2am ↑1.0.24
+◑ 42% ✦ Opus ⎇ main ⏱ 40%→2am ↑1.0.24
 ```
 
 Order: context → model → git branch → usage → update
