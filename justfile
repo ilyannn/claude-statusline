@@ -60,11 +60,11 @@ smoke-colors:
 
 # Test light mode colors
 smoke-light:
-    @CLAUDE_STATUSLINE_THEME=light echo '{"model":{"display_name":"Opus"},"context_window":{"used_percentage":42},"workspace":{"current_dir":"/tmp"},"version":"1.0.23"}' | uv run ./statusline.py
+    @export CLAUDE_STATUSLINE_THEME=light && echo '{"model":{"display_name":"Opus"},"context_window":{"used_percentage":42},"workspace":{"current_dir":"/tmp"},"version":"1.0.23"}' | uv run ./statusline.py
 
 # Test dark mode colors
 smoke-dark:
-    @CLAUDE_STATUSLINE_THEME=dark echo '{"model":{"display_name":"Opus"},"context_window":{"used_percentage":42},"workspace":{"current_dir":"/tmp"},"version":"1.0.23"}' | uv run ./statusline.py
+    @export CLAUDE_STATUSLINE_THEME=dark && echo '{"model":{"display_name":"Opus"},"context_window":{"used_percentage":42},"workspace":{"current_dir":"/tmp"},"version":"1.0.23"}' | uv run ./statusline.py
 
 # Test with mock usage data
 smoke-usage:
