@@ -537,61 +537,88 @@ class TestClaudeUsage:
 class TestGetClaudeOAuthToken:
     """Tests for OAuth token retrieval."""
 
-    def test_token_extraction(self):
+    def test_token_extraction_via_keychain(self):
         mock_creds = json.dumps({"claudeAiOauth": {"accessToken": "test-token-123"}})
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(returncode=0, stdout=mock_creds)
-            result = statusline.get_claude_oauth_token()
-            assert result == "test-token-123"
+        with patch("sys.platform", "darwin"):
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value = MagicMock(returncode=0, stdout=mock_creds)
+                result = statusline.get_claude_oauth_token()
+                assert result == "test-token-123"
 
-    def test_no_keychain_falls_back_to_credentials_file(self, tmp_path):
+    def test_keychain_fails_falls_back_to_credentials_file(self, tmp_path):
         cred_file = tmp_path / ".credentials.json"
         cred_file.write_text(
             json.dumps({"claudeAiOauth": {"accessToken": "file-token"}})
         )
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(returncode=1, stdout="")
-            with patch.object(
-                statusline, "_get_claude_config_dir", return_value=tmp_path
-            ):
-                result = statusline.get_claude_oauth_token()
-                assert result == "file-token"
+        with patch("sys.platform", "darwin"):
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value = MagicMock(returncode=1, stdout="")
+                with patch.object(
+                    statusline, "_get_claude_config_dir", return_value=tmp_path
+                ):
+                    result = statusline.get_claude_oauth_token()
+                    assert result == "file-token"
 
     def test_no_keychain_no_file(self):
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(returncode=1, stdout="")
-            with patch.object(statusline, "_read_credentials_file", return_value=None):
-                result = statusline.get_claude_oauth_token()
-                assert result is None
+        with patch("sys.platform", "darwin"):
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value = MagicMock(returncode=1, stdout="")
+                with patch.object(
+                    statusline, "_read_credentials_file", return_value=None
+                ):
+                    result = statusline.get_claude_oauth_token()
+                    assert result is None
 
     def test_malformed_json(self):
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(returncode=0, stdout="not json")
-            with patch.object(statusline, "_read_credentials_file", return_value=None):
-                result = statusline.get_claude_oauth_token()
-                assert result is None
+        with patch("sys.platform", "darwin"):
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value = MagicMock(returncode=0, stdout="not json")
+                with patch.object(
+                    statusline, "_read_credentials_file", return_value=None
+                ):
+                    result = statusline.get_claude_oauth_token()
+                    assert result is None
 
     def test_missing_oauth_key(self):
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=0, stdout=json.dumps({"otherKey": "value"})
-            )
-            with patch.object(statusline, "_read_credentials_file", return_value=None):
-                result = statusline.get_claude_oauth_token()
-                assert result is None
+        with patch("sys.platform", "darwin"):
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value = MagicMock(
+                    returncode=0, stdout=json.dumps({"otherKey": "value"})
+                )
+                with patch.object(
+                    statusline, "_read_credentials_file", return_value=None
+                ):
+                    result = statusline.get_claude_oauth_token()
+                    assert result is None
+
+    def test_keychain_skipped_on_linux(self, tmp_path):
+        """On non-darwin platforms, keychain is skipped entirely."""
+        cred_file = tmp_path / ".credentials.json"
+        cred_file.write_text(
+            json.dumps({"claudeAiOauth": {"accessToken": "linux-token"}})
+        )
+        with patch("sys.platform", "linux"):
+            with patch("subprocess.run") as mock_run:
+                with patch.object(
+                    statusline, "_get_claude_config_dir", return_value=tmp_path
+                ):
+                    result = statusline.get_claude_oauth_token()
+                    assert result == "linux-token"
+                    mock_run.assert_not_called()
 
     def test_timeout_falls_back_to_credentials_file(self, tmp_path):
         cred_file = tmp_path / ".credentials.json"
         cred_file.write_text(
             json.dumps({"claudeAiOauth": {"accessToken": "fallback-token"}})
         )
-        with patch("subprocess.run") as mock_run:
-            mock_run.side_effect = subprocess.TimeoutExpired("security", 2)
-            with patch.object(
-                statusline, "_get_claude_config_dir", return_value=tmp_path
-            ):
-                result = statusline.get_claude_oauth_token()
-                assert result == "fallback-token"
+        with patch("sys.platform", "darwin"):
+            with patch("subprocess.run") as mock_run:
+                mock_run.side_effect = subprocess.TimeoutExpired("security", 2)
+                with patch.object(
+                    statusline, "_get_claude_config_dir", return_value=tmp_path
+                ):
+                    result = statusline.get_claude_oauth_token()
+                    assert result == "fallback-token"
 
     def test_credentials_file_with_env_override(self, tmp_path):
         cred_file = tmp_path / ".credentials.json"
