@@ -1,23 +1,19 @@
 # Claude Code Status Line
 
-A Python script that generates a custom status line for Claude Code CLI.
+A status line for Claude Code CLI, implemented in both Python and Rust.
 
 ## Architecture
 
-- **statusline.py** - Main script, reads JSON from stdin, outputs ANSI-colored status line
-- **test_statusline.py** - 105 tests covering observable behavior (80% coverage)
-- **justfile** - Development commands
+- **statusline.py** - Python implementation, reads JSON from stdin, outputs ANSI-colored status line
+- **test_statusline.py** - 117 Python tests covering observable behavior
+- **rust/** - Rust rewrite, functionally equivalent, shares cache files
+- **justfile** - Development commands (`just check` runs everything)
 
-## Key Functions
+## Key Commands
 
-- `detect_dark_mode()` - Detects light/dark theme via env vars or macOS defaults
-- `get_colors(dark_mode)` - Returns ANSI color codes for current theme
-- `get_git_status(directory)` - Gets current git branch and dirty status in a single call
-- `get_claude_oauth_token()` - Reads OAuth token from macOS Keychain
-- `get_claude_usage()` - Fetches 5-hour usage from Anthropic API (cached 5 min)
-- `check_for_update(version)` - Checks npm for newer version (cached 1 hour)
-- `format_reset_time(iso_timestamp)` - Formats reset time as "2am", "3pm", etc.
-- `main()` - Parses stdin JSON, assembles and prints status line
+- `just check` - lint + format-check + toml-check + test (Python 3.14 + 3.9 + Rust)
+- `just bench` - 3 rounds × 50 iterations, randomized order
+- `just format` - ruff + cargo fmt
 
 ## Input Format (stdin JSON)
 
@@ -45,9 +41,22 @@ Order: context → model → git branch → usage → update
 | Context | <50% | 50-74% | ≥75% |
 | Usage | <50% | 50-79% | ≥80% |
 
-## Testing
+## Environment Variables
 
-Run `just test` - tests document all observable behavior for potential Rust rewrite.
+| Variable | Description |
+|----------|-------------|
+| `CLAUDE_STATUSLINE_THEME` | Force `light` or `dark` theme |
+| `CLAUDE_STATUSLINE_SKIP_DIRTY` | Read `.git/HEAD` directly, skip dirty check (Rust only) |
+| `CLAUDE_STATUSLINE_DEBUG` | Path to dump input JSON |
+
+## Benchmarks
+
+| Method | Avg |
+|--------|-----|
+| Rust + skip dirty | ~15ms |
+| Rust | ~28ms |
+| venv Python 3.14 | ~67ms |
+| System Python 3.9 | ~85ms |
 
 ## API Endpoints
 
