@@ -1,4 +1,5 @@
 """Tests for Claude Code status line script."""
+
 from __future__ import annotations
 
 import io
