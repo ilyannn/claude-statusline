@@ -114,6 +114,20 @@ bench:
 
     rm -rf .bench-venv
 
+    # Rust (release)
+    if [ -f ./rust/target/release/claude-statusline ]; then
+        echo ""
+        echo "Rust (release):"
+        start=$(python3 -c 'import time; print(time.time())')
+        for i in $(seq 1 $n); do echo "$input" | ./rust/target/release/claude-statusline > /dev/null 2>&1; done
+        end=$(python3 -c 'import time; print(time.time())')
+        avg=$(python3 -c "print(f'{($end - $start) / $n * 1000:.0f}ms')")
+        echo "  avg: $avg"
+    else
+        echo ""
+        echo "Rust: not built (run 'cargo build --release' in rust/)"
+    fi
+
 # ---- Cache Management -------------------------------------------------------
 
 # Clear update cache
