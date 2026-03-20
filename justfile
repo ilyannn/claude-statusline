@@ -9,18 +9,21 @@ _default:
 # Run all checks (lint + format-check + toml-check + test)
 check: lint format-check toml-check test
 
-# Lint Python code with ruff
+# Lint Python and Rust code
 lint:
     uvx ruff check .
+    cargo clippy --manifest-path rust/Cargo.toml -- -D warnings
 
-# Format Python code with ruff
+# Format Python and Rust code
 format:
     uvx ruff format .
     uvx ruff check --select I --fix .
+    cargo fmt --manifest-path rust/Cargo.toml
 
 # Check if code is formatted correctly (fails if not)
 format-check:
     uvx ruff format --check .
+    cargo fmt --manifest-path rust/Cargo.toml --check
 
 # Check TOML formatting with taplo
 toml-check:
@@ -33,10 +36,11 @@ toml-format:
 
 # ---- Testing ----------------------------------------------------------------
 
-# Run all tests (including Python 3.9 compatibility)
+# Run all tests (Python 3.14 + 3.9 + Rust)
 test:
     uv run --extra dev pytest test_statusline.py -v
     uv run --python 3.9 --extra dev pytest test_statusline.py -v
+    cargo test --manifest-path rust/Cargo.toml
 
 # Run tests with coverage
 test-cov:
@@ -77,56 +81,55 @@ smoke-usage:
 
 # ---- Benchmarks -------------------------------------------------------------
 
-# Benchmark: system python vs new python vs uv run
+# Benchmark: 3 rounds in random order, averaged
 bench:
-    #!/usr/bin/env bash
-    input='{"model":{"display_name":"Opus"},"context_window":{"used_percentage":42},"workspace":{"current_dir":"/tmp"},"version":"1.0.23"}'
-    n=50
-    echo "Running $n iterations each..."
-    echo ""
+    #!/usr/bin/env python3
+    import subprocess, time, random
 
-    # System Python
-    echo "System Python ($(python3 --version 2>&1)):"
-    start=$(python3 -c 'import time; print(time.time())')
-    for i in $(seq 1 $n); do echo "$input" | python3 ./statusline.py > /dev/null 2>&1; done
-    end=$(python3 -c 'import time; print(time.time())')
-    avg=$(python3 -c "print(f'{($end - $start) / $n * 1000:.0f}ms')")
-    echo "  avg: $avg"
-    echo ""
+    INPUT = '{"model":{"display_name":"Opus"},"context_window":{"used_percentage":42},"workspace":{"current_dir":"/tmp"},"version":"1.0.23"}'
+    N = 50
+    ROUNDS = 3
 
-    # New Python (via venv)
-    uv venv --python 3.14 .bench-venv -q
-    echo "New Python ($(.bench-venv/bin/python --version 2>&1)):"
-    start=$(python3 -c 'import time; print(time.time())')
-    for i in $(seq 1 $n); do echo "$input" | .bench-venv/bin/python ./statusline.py > /dev/null 2>&1; done
-    end=$(python3 -c 'import time; print(time.time())')
-    avg=$(python3 -c "print(f'{($end - $start) / $n * 1000:.0f}ms')")
-    echo "  avg: $avg"
-    echo ""
+    # Build runners: (name, command)
+    runners = []
 
-    # uv run with script
-    echo "uv run ./statusline.py:"
-    start=$(python3 -c 'import time; print(time.time())')
-    for i in $(seq 1 $n); do echo "$input" | uv run ./statusline.py > /dev/null 2>&1; done
-    end=$(python3 -c 'import time; print(time.time())')
-    avg=$(python3 -c "print(f'{($end - $start) / $n * 1000:.0f}ms')")
-    echo "  avg: $avg"
+    pyver = subprocess.run(["python3", "--version"], capture_output=True, text=True).stdout.strip()
+    runners.append((f"System Python ({pyver})", ["python3", "./statusline.py"]))
 
-    rm -rf .bench-venv
+    subprocess.run(["uv", "venv", "--python", "3.14", ".bench-venv", "-q"], check=True)
+    venv_ver = subprocess.run([".bench-venv/bin/python", "--version"], capture_output=True, text=True).stdout.strip()
+    runners.append((f"venv Python ({venv_ver})", [".bench-venv/bin/python", "./statusline.py"]))
 
-    # Rust (release)
-    if [ -f ./rust/target/release/claude-statusline ]; then
-        echo ""
-        echo "Rust (release):"
-        start=$(python3 -c 'import time; print(time.time())')
-        for i in $(seq 1 $n); do echo "$input" | ./rust/target/release/claude-statusline > /dev/null 2>&1; done
-        end=$(python3 -c 'import time; print(time.time())')
-        avg=$(python3 -c "print(f'{($end - $start) / $n * 1000:.0f}ms')")
-        echo "  avg: $avg"
-    else
-        echo ""
-        echo "Rust: not built (run 'cargo build --release' in rust/)"
-    fi
+    runners.append(("uv run", ["uv", "run", "./statusline.py"]))
+
+    import os.path
+    if os.path.isfile("./rust/target/release/claude-statusline"):
+        runners.append(("Rust (release)", ["./rust/target/release/claude-statusline"]))
+
+    totals = {name: 0.0 for name, _ in runners}
+
+    print(f"Running {ROUNDS} rounds × {N} iterations each (randomized order)...\n")
+
+    for round_num in range(1, ROUNDS + 1):
+        order = list(runners)
+        random.shuffle(order)
+        print(f"Round {round_num}: {', '.join(name for name, _ in order)}")
+        for name, cmd in order:
+            start = time.time()
+            for _ in range(N):
+                p = subprocess.run(cmd, input=INPUT, capture_output=True, text=True)
+            elapsed = time.time() - start
+            ms = elapsed / N * 1000
+            totals[name] += ms
+            print(f"  {name:<40s} {ms:6.1f}ms")
+        print()
+
+    subprocess.run(["rm", "-rf", ".bench-venv"])
+
+    print(f"Averages ({ROUNDS} rounds):")
+    for name, _ in runners:
+        avg = totals[name] / ROUNDS
+        print(f"  {name:<40s} {avg:.0f}ms")
 
 # ---- Cache Management -------------------------------------------------------
 
