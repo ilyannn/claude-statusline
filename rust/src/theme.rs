@@ -74,7 +74,7 @@ pub fn detect_dark_mode_from_env(theme: Option<&str>, colorfgbg: Option<&str>) -
     // 2. COLORFGBG (format: "fg;bg")
     if let Some(cfg) = colorfgbg {
         if !cfg.is_empty() {
-            if let Some(bg_str) = cfg.split(';').last() {
+            if let Some(bg_str) = cfg.rsplit(';').next() {
                 if let Ok(bg) = bg_str.parse::<u32>() {
                     return bg < 8;
                 }

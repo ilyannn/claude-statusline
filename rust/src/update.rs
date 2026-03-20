@@ -32,7 +32,7 @@ pub fn check_for_update(current_version: &str, cache_dir: &Path) -> Option<Strin
     }
 
     // Return stale cached value if exists
-    if let Some(content) = std::fs::read_to_string(&cache_path).ok() {
+    if let Ok(content) = std::fs::read_to_string(&cache_path) {
         parse_cache_content(content.trim(), current_version)
     } else {
         None

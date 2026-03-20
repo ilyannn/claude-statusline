@@ -68,7 +68,7 @@ pub fn get_claude_usage(cache_dir: &Path) -> Option<UsageData> {
     }
 
     // Return stale cached value if exists
-    if let Some(content) = std::fs::read_to_string(&cache_path).ok() {
+    if let Ok(content) = std::fs::read_to_string(&cache_path) {
         serde_json::from_str(&content).ok()
     } else {
         None
