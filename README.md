@@ -18,7 +18,7 @@ Custom status line script for Claude Code displaying context usage, model, git b
 
 **Runtime:**
 - macOS (Keychain access for OAuth, `defaults` for theme detection)
-- Python 3.11+ (standard library only, no pip install needed)
+- Python 3.9+ (standard library only, no pip install needed)
 - npm - for update version check (`npm view @anthropic-ai/claude-code version`)
 - git - for branch and dirty status detection
 
@@ -30,13 +30,17 @@ Custom status line script for Claude Code displaying context usage, model, git b
 
 ## Installation
 
-Add to `~/.claude/settings.json`:
+Create a venv with a recent Python for best performance, then add to `~/.claude/settings.json`:
+
+```bash
+uv venv --python 3.14 /path/to/claude-statusline/.venv
+```
 
 ```json
 {
   "statusLine": {
     "type": "command",
-    "command": "/path/to/statusline.py"
+    "command": "/path/to/claude-statusline/.venv/bin/python /path/to/claude-statusline/statusline.py"
   }
 }
 ```
@@ -69,14 +73,15 @@ Colors adapt to light/dark mode via:
 just check         # Run all checks (lint + format + toml + test)
 just lint          # Lint with ruff
 just format        # Format with ruff
-just test          # Run 105 tests
+just test          # Run 117 tests (Python 3.14 + 3.9)
 just test-cov      # Tests with coverage (80%)
 just smoke         # Quick visual test
 just smoke-colors  # Show all 3 color states
 just smoke-light   # Test light theme
 just smoke-dark    # Test dark theme
 just smoke-usage   # Test with mock usage data
-just clear-cache   # Reset caches
+just bench         # Benchmark Python versions
+just cache-clear   # Reset caches
 just cache-status  # Check cache age
 ```
 
@@ -91,4 +96,12 @@ Cache directory resolution: `$XDG_CACHE_HOME/claude-statusline` > `~/.cache/clau
 
 All API calls run in background via `fork()` - they never block the status line.
 
-**Python startup overhead:** ~30-50ms per invocation. A Rust rewrite would reduce this to ~1-5ms.
+**Startup benchmarks** (50 iterations, `just bench`):
+
+| Method | Python | Avg |
+|--------|--------|-----|
+| System Python | 3.9.6 | ~91ms |
+| venv Python | 3.14.3 | ~70ms |
+| `uv run` | 3.14.3 | ~99ms |
+
+Using a venv with a recent Python is the fastest option. A Rust rewrite would reduce this to ~1-5ms.
