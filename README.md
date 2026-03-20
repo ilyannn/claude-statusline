@@ -1,6 +1,6 @@
 # Claude Code Status Line
 
-Custom status line for Claude Code displaying context usage, model, git branch, Claude.ai usage limits, and update availability. Available in Python and [Rust](#rust-rewrite) (recommended, ~15ms).
+Custom status line for Claude Code displaying context usage, model, git branch, Claude.ai usage limits, and update availability. Available in Python and [Rust](#rust-rewrite) (recommended, ~7ms with env var tuning).
 
 ## Output Format
 
