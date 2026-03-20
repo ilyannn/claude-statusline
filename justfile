@@ -75,6 +75,45 @@ smoke-usage:
     echo '{"model":{"display_name":"Opus"},"context_window":{"used_percentage":42},"workspace":{"current_dir":"/tmp"},"version":"1.0.23"}' | uv run ./statusline.py
     rm "$d/usage-cache"
 
+# ---- Benchmarks -------------------------------------------------------------
+
+# Benchmark: system python vs new python vs uv run
+bench:
+    #!/usr/bin/env bash
+    input='{"model":{"display_name":"Opus"},"context_window":{"used_percentage":42},"workspace":{"current_dir":"/tmp"},"version":"1.0.23"}'
+    n=50
+    echo "Running $n iterations each..."
+    echo ""
+
+    # System Python
+    echo "System Python ($(python3 --version 2>&1)):"
+    start=$(python3 -c 'import time; print(time.time())')
+    for i in $(seq 1 $n); do echo "$input" | python3 ./statusline.py > /dev/null 2>&1; done
+    end=$(python3 -c 'import time; print(time.time())')
+    avg=$(python3 -c "print(f'{($end - $start) / $n * 1000:.0f}ms')")
+    echo "  avg: $avg"
+    echo ""
+
+    # New Python (via venv)
+    uv venv --python 3.14 .bench-venv -q
+    echo "New Python ($(.bench-venv/bin/python --version 2>&1)):"
+    start=$(python3 -c 'import time; print(time.time())')
+    for i in $(seq 1 $n); do echo "$input" | .bench-venv/bin/python ./statusline.py > /dev/null 2>&1; done
+    end=$(python3 -c 'import time; print(time.time())')
+    avg=$(python3 -c "print(f'{($end - $start) / $n * 1000:.0f}ms')")
+    echo "  avg: $avg"
+    echo ""
+
+    # uv run with script
+    echo "uv run ./statusline.py:"
+    start=$(python3 -c 'import time; print(time.time())')
+    for i in $(seq 1 $n); do echo "$input" | uv run ./statusline.py > /dev/null 2>&1; done
+    end=$(python3 -c 'import time; print(time.time())')
+    avg=$(python3 -c "print(f'{($end - $start) / $n * 1000:.0f}ms')")
+    echo "  avg: $avg"
+
+    rm -rf .bench-venv
+
 # ---- Cache Management -------------------------------------------------------
 
 # Clear update cache
