@@ -90,34 +90,36 @@ bench:
     N = 50
     ROUNDS = 3
 
-    # Build runners: (name, command)
+    # Build runners: (name, command, extra_env)
     runners = []
 
     pyver = subprocess.run(["python3", "--version"], capture_output=True, text=True).stdout.strip()
-    runners.append((f"System Python ({pyver})", ["python3", "./statusline.py"]))
+    runners.append((f"System Python ({pyver})", ["python3", "./statusline.py"], {}))
 
     subprocess.run(["uv", "venv", "--python", "3.14", ".bench-venv", "-q"], check=True)
     venv_ver = subprocess.run([".bench-venv/bin/python", "--version"], capture_output=True, text=True).stdout.strip()
-    runners.append((f"venv Python ({venv_ver})", [".bench-venv/bin/python", "./statusline.py"]))
+    runners.append((f"venv Python ({venv_ver})", [".bench-venv/bin/python", "./statusline.py"], {}))
 
-    runners.append(("uv run", ["uv", "run", "./statusline.py"]))
+    runners.append(("uv run", ["uv", "run", "./statusline.py"], {}))
 
-    import os.path
+    import os, os.path
     if os.path.isfile("./rust/target/release/claude-statusline"):
-        runners.append(("Rust (release)", ["./rust/target/release/claude-statusline"]))
+        runners.append(("Rust", ["./rust/target/release/claude-statusline"], {}))
+        runners.append(("Rust (skip dirty)", ["./rust/target/release/claude-statusline"], {"CLAUDE_STATUSLINE_SKIP_DIRTY": "1"}))
 
-    totals = {name: 0.0 for name, _ in runners}
+    totals = {name: 0.0 for name, _, _ in runners}
 
     print(f"Running {ROUNDS} rounds × {N} iterations each (randomized order)...\n")
 
     for round_num in range(1, ROUNDS + 1):
         order = list(runners)
         random.shuffle(order)
-        print(f"Round {round_num}: {', '.join(name for name, _ in order)}")
-        for name, cmd in order:
+        print(f"Round {round_num}: {', '.join(name for name, _, _ in order)}")
+        for name, cmd, env in order:
+            run_env = {**os.environ, **env} if env else None
             start = time.time()
             for _ in range(N):
-                p = subprocess.run(cmd, input=INPUT, capture_output=True, text=True)
+                subprocess.run(cmd, input=INPUT, capture_output=True, text=True, env=run_env)
             elapsed = time.time() - start
             ms = elapsed / N * 1000
             totals[name] += ms
@@ -127,7 +129,7 @@ bench:
     subprocess.run(["rm", "-rf", ".bench-venv"])
 
     print(f"Averages ({ROUNDS} rounds):")
-    for name, _ in runners:
+    for name, _, _ in runners:
         avg = totals[name] / ROUNDS
         print(f"  {name:<40s} {avg:.0f}ms")
 
