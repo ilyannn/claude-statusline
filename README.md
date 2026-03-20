@@ -51,7 +51,7 @@ Add to `~/.claude/settings.json`:
 {
   "statusLine": {
     "type": "command",
-    "command": "CLAUDE_STATUSLINE_SKIP_DIRTY=1 /path/to/claude-statusline/rust/target/release/claude-statusline"
+    "command": "CLAUDE_STATUSLINE_THEME=dark CLAUDE_STATUSLINE_SKIP_DIRTY=1 /path/to/claude-statusline/rust/target/release/claude-statusline"
   }
 }
 ```
@@ -130,17 +130,20 @@ All API calls run in background via `fork()` - they never block the status line.
 
 | Method | Avg |
 |--------|-----|
-| Rust + skip dirty | ~15ms |
-| Rust | ~28ms |
-| venv Python 3.14 | ~67ms |
-| System Python 3.9 | ~85ms |
-| `uv run` | ~97ms |
+| Rust (skip dirty + theme) | ~7ms |
+| Rust (skip dirty) | ~14ms |
+| Rust | ~26ms |
+| venv Python 3.14 | ~64ms |
+| System Python 3.9 | ~83ms |
+| `uv run` | ~89ms |
 
 ## Rust Rewrite
 
-A full Rust rewrite lives in `rust/`. It is functionally equivalent to the Python version with identical output, shared cache files, and the same environment variables.
+A full Rust rewrite lives in [`rust/`](rust/). It is functionally equivalent to the Python version with identical output, shared cache files, and the same environment variables. See [`rust/README.md`](rust/README.md) for architecture and details.
 
-The Rust binary avoids Python startup overhead and optionally skips the `git status` subprocess by reading `.git/HEAD` directly (`CLAUDE_STATUSLINE_SKIP_DIRTY=1`). This trades the dirty indicator (`*`) for a ~2x speedup.
+Two env vars eliminate subprocess overhead:
+- `CLAUDE_STATUSLINE_THEME=dark` — skips `defaults` call (~7ms saved)
+- `CLAUDE_STATUSLINE_SKIP_DIRTY=1` — reads `.git/HEAD` instead of `git status` (~12ms saved, loses dirty `*` indicator)
 
 ```bash
 just build
