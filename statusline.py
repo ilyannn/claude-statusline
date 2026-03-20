@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Claude Code Status Line - displays context %, model, git branch, update status, usage limits."""
+from __future__ import annotations
 
 import json
 import os

@@ -2,7 +2,7 @@
 name = "claude-statusline"
 version = "0.1.0"
 description = "Claude Code status line script"
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 dependencies = []
 
 [project.optional-dependencies]

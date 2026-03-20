@@ -33,9 +33,10 @@ toml-format:
 
 # ---- Testing ----------------------------------------------------------------
 
-# Run all tests
+# Run all tests (including Python 3.9 compatibility)
 test:
     uv run --extra dev pytest test_statusline.py -v
+    uv run --python 3.9 --extra dev pytest test_statusline.py -v
 
 # Run tests with coverage
 test-cov:
