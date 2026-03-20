@@ -544,31 +544,144 @@ class TestGetClaudeOAuthToken:
             result = statusline.get_claude_oauth_token()
             assert result == "test-token-123"
 
-    def test_no_keychain_entry(self):
+    def test_no_keychain_falls_back_to_credentials_file(self, tmp_path):
+        cred_file = tmp_path / ".credentials.json"
+        cred_file.write_text(
+            json.dumps({"claudeAiOauth": {"accessToken": "file-token"}})
+        )
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=1, stdout="")
-            result = statusline.get_claude_oauth_token()
-            assert result is None
+            with patch.object(
+                statusline, "_get_claude_config_dir", return_value=tmp_path
+            ):
+                result = statusline.get_claude_oauth_token()
+                assert result == "file-token"
+
+    def test_no_keychain_no_file(self):
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=1, stdout="")
+            with patch.object(statusline, "_read_credentials_file", return_value=None):
+                result = statusline.get_claude_oauth_token()
+                assert result is None
 
     def test_malformed_json(self):
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="not json")
-            result = statusline.get_claude_oauth_token()
-            assert result is None
+            with patch.object(statusline, "_read_credentials_file", return_value=None):
+                result = statusline.get_claude_oauth_token()
+                assert result is None
 
     def test_missing_oauth_key(self):
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(
                 returncode=0, stdout=json.dumps({"otherKey": "value"})
             )
-            result = statusline.get_claude_oauth_token()
-            assert result is None
+            with patch.object(statusline, "_read_credentials_file", return_value=None):
+                result = statusline.get_claude_oauth_token()
+                assert result is None
 
-    def test_timeout_handling(self):
+    def test_timeout_falls_back_to_credentials_file(self, tmp_path):
+        cred_file = tmp_path / ".credentials.json"
+        cred_file.write_text(
+            json.dumps({"claudeAiOauth": {"accessToken": "fallback-token"}})
+        )
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = subprocess.TimeoutExpired("security", 2)
-            result = statusline.get_claude_oauth_token()
-            assert result is None
+            with patch.object(
+                statusline, "_get_claude_config_dir", return_value=tmp_path
+            ):
+                result = statusline.get_claude_oauth_token()
+                assert result == "fallback-token"
+
+    def test_credentials_file_with_env_override(self, tmp_path):
+        cred_file = tmp_path / ".credentials.json"
+        cred_file.write_text(
+            json.dumps({"claudeAiOauth": {"accessToken": "env-token"}})
+        )
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = FileNotFoundError()  # no security command (Linux)
+            with patch.dict(os.environ, {"CLAUDE_CONFIG_DIR": str(tmp_path)}):
+                result = statusline.get_claude_oauth_token()
+                assert result == "env-token"
+
+
+class TestParseOAuthToken:
+    """Tests for _parse_oauth_token helper."""
+
+    def test_valid_token(self):
+        raw = json.dumps({"claudeAiOauth": {"accessToken": "tok-abc"}})
+        assert statusline._parse_oauth_token(raw) == "tok-abc"
+
+    def test_empty_access_token_returns_none(self):
+        raw = json.dumps({"claudeAiOauth": {"accessToken": ""}})
+        assert statusline._parse_oauth_token(raw) is None
+
+    def test_null_access_token_returns_none(self):
+        raw = json.dumps({"claudeAiOauth": {"accessToken": None}})
+        assert statusline._parse_oauth_token(raw) is None
+
+    def test_missing_oauth_key(self):
+        raw = json.dumps({"other": "value"})
+        assert statusline._parse_oauth_token(raw) is None
+
+    def test_missing_access_token_key(self):
+        raw = json.dumps({"claudeAiOauth": {}})
+        assert statusline._parse_oauth_token(raw) is None
+
+    def test_malformed_json(self):
+        assert statusline._parse_oauth_token("not json") is None
+
+    def test_whitespace_stripped(self):
+        raw = '  {"claudeAiOauth":{"accessToken":"tok"}}  \n'
+        assert statusline._parse_oauth_token(raw) == "tok"
+
+
+class TestGetClaudeConfigDir:
+    """Tests for _get_claude_config_dir helper."""
+
+    def test_env_override(self, tmp_path):
+        with patch.dict(os.environ, {"CLAUDE_CONFIG_DIR": str(tmp_path)}):
+            assert statusline._get_claude_config_dir() == tmp_path
+
+    def test_default_is_home_dot_claude(self):
+        with patch.dict(os.environ, {}, clear=True):
+            # Remove CLAUDE_CONFIG_DIR if present
+            os.environ.pop("CLAUDE_CONFIG_DIR", None)
+            result = statusline._get_claude_config_dir()
+            assert result == Path.home() / ".claude"
+
+    def test_empty_env_uses_default(self):
+        with patch.dict(os.environ, {"CLAUDE_CONFIG_DIR": ""}):
+            # Empty string should not be used
+            os.environ.pop("CLAUDE_CONFIG_DIR")
+            result = statusline._get_claude_config_dir()
+            assert result == Path.home() / ".claude"
+
+
+class TestReadCredentialsFile:
+    """Tests for _read_credentials_file helper."""
+
+    def test_valid_file(self, tmp_path):
+        cred_file = tmp_path / ".credentials.json"
+        cred_file.write_text(json.dumps({"claudeAiOauth": {"accessToken": "file-tok"}}))
+        with patch.object(statusline, "_get_claude_config_dir", return_value=tmp_path):
+            assert statusline._read_credentials_file() == "file-tok"
+
+    def test_missing_file(self, tmp_path):
+        with patch.object(statusline, "_get_claude_config_dir", return_value=tmp_path):
+            assert statusline._read_credentials_file() is None
+
+    def test_malformed_file(self, tmp_path):
+        cred_file = tmp_path / ".credentials.json"
+        cred_file.write_text("not json")
+        with patch.object(statusline, "_get_claude_config_dir", return_value=tmp_path):
+            assert statusline._read_credentials_file() is None
+
+    def test_empty_token_in_file(self, tmp_path):
+        cred_file = tmp_path / ".credentials.json"
+        cred_file.write_text(json.dumps({"claudeAiOauth": {"accessToken": ""}}))
+        with patch.object(statusline, "_get_claude_config_dir", return_value=tmp_path):
+            assert statusline._read_credentials_file() is None
 
 
 class TestInputParsing:

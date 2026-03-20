@@ -19,9 +19,29 @@ fn usage_cache_path(cache_dir: &Path) -> PathBuf {
     cache_dir.join("usage-cache")
 }
 
-/// Get Claude Code OAuth token from macOS Keychain.
+/// Get Claude config directory: $CLAUDE_CONFIG_DIR or ~/.claude.
+fn get_claude_config_dir() -> Option<PathBuf> {
+    if let Ok(dir) = std::env::var("CLAUDE_CONFIG_DIR") {
+        if !dir.is_empty() {
+            return Some(PathBuf::from(dir));
+        }
+    }
+    std::env::var("HOME")
+        .ok()
+        .map(|h| PathBuf::from(h).join(".claude"))
+}
+
+/// Read OAuth token from ~/.claude/.credentials.json.
+fn read_credentials_file() -> Option<String> {
+    let cred_path = get_claude_config_dir()?.join(".credentials.json");
+    let content = std::fs::read_to_string(cred_path).ok()?;
+    parse_oauth_token(&content)
+}
+
+/// Get Claude Code OAuth token from macOS Keychain, falling back to credentials file.
 pub fn get_claude_oauth_token() -> Option<String> {
-    let output = Command::new("security")
+    // Try macOS Keychain first
+    if let Ok(output) = Command::new("security")
         .args([
             "find-generic-password",
             "-s",
@@ -29,24 +49,28 @@ pub fn get_claude_oauth_token() -> Option<String> {
             "-w",
         ])
         .output()
-        .ok()?;
-
-    if !output.status.success() {
-        return None;
+    {
+        if output.status.success() {
+            if let Ok(stdout) = String::from_utf8(output.stdout) {
+                if let Some(token) = parse_oauth_token(&stdout) {
+                    return Some(token);
+                }
+            }
+        }
     }
 
-    let stdout = String::from_utf8(output.stdout).ok()?;
-    parse_oauth_token(&stdout)
+    // Fall back to credentials file (works on Linux/non-macOS)
+    read_credentials_file()
 }
 
 /// Extract OAuth access token from keychain JSON. Extracted for testability.
 pub fn parse_oauth_token(json_str: &str) -> Option<String> {
     let creds: serde_json::Value = serde_json::from_str(json_str.trim()).ok()?;
-    creds
-        .get("claudeAiOauth")?
-        .get("accessToken")?
-        .as_str()
-        .map(|s| s.to_string())
+    let token = creds.get("claudeAiOauth")?.get("accessToken")?.as_str()?;
+    if token.is_empty() {
+        return None;
+    }
+    Some(token.to_string())
 }
 
 /// Get Claude.ai usage stats. Uses cache to avoid frequent API calls.
@@ -210,6 +234,125 @@ mod tests {
         // No cache file, no keychain — should return None
         let result = get_claude_usage(dir.path());
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_read_credentials_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let cred_path = dir.path().join(".credentials.json");
+        std::fs::write(
+            &cred_path,
+            r#"{"claudeAiOauth":{"accessToken":"file-token-456"}}"#,
+        )
+        .unwrap();
+
+        // Point CLAUDE_CONFIG_DIR at the temp dir
+        std::env::set_var("CLAUDE_CONFIG_DIR", dir.path().as_os_str());
+        let result = read_credentials_file();
+        std::env::remove_var("CLAUDE_CONFIG_DIR");
+
+        assert_eq!(result, Some("file-token-456".to_string()));
+    }
+
+    #[test]
+    fn test_read_credentials_file_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("CLAUDE_CONFIG_DIR", dir.path().as_os_str());
+        let result = read_credentials_file();
+        std::env::remove_var("CLAUDE_CONFIG_DIR");
+
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_read_credentials_file_malformed() {
+        let dir = tempfile::tempdir().unwrap();
+        let cred_path = dir.path().join(".credentials.json");
+        std::fs::write(&cred_path, "not json").unwrap();
+
+        std::env::set_var("CLAUDE_CONFIG_DIR", dir.path().as_os_str());
+        let result = read_credentials_file();
+        std::env::remove_var("CLAUDE_CONFIG_DIR");
+
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_empty_access_token() {
+        let json = r#"{"claudeAiOauth":{"accessToken":""}}"#;
+        assert_eq!(parse_oauth_token(json), None);
+    }
+
+    #[test]
+    fn test_null_access_token() {
+        let json = r#"{"claudeAiOauth":{"accessToken":null}}"#;
+        assert_eq!(parse_oauth_token(json), None);
+    }
+
+    #[test]
+    fn test_token_with_whitespace() {
+        let json = "  {\"claudeAiOauth\":{\"accessToken\":\"tok\"}}  \n";
+        assert_eq!(parse_oauth_token(json), Some("tok".to_string()));
+    }
+
+    #[test]
+    fn test_get_claude_config_dir_env_override() {
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("CLAUDE_CONFIG_DIR", dir.path().as_os_str());
+        let result = get_claude_config_dir();
+        std::env::remove_var("CLAUDE_CONFIG_DIR");
+
+        assert_eq!(result, Some(dir.path().to_path_buf()));
+    }
+
+    #[test]
+    fn test_get_claude_config_dir_empty_env() {
+        std::env::set_var("CLAUDE_CONFIG_DIR", "");
+        let result = get_claude_config_dir();
+        std::env::remove_var("CLAUDE_CONFIG_DIR");
+
+        // Empty env should fall back to $HOME/.claude
+        let expected = std::env::var("HOME")
+            .map(|h| PathBuf::from(h).join(".claude"))
+            .ok();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_get_claude_config_dir_default() {
+        std::env::remove_var("CLAUDE_CONFIG_DIR");
+        let result = get_claude_config_dir();
+
+        let expected = std::env::var("HOME")
+            .map(|h| PathBuf::from(h).join(".claude"))
+            .ok();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_read_credentials_file_empty_token() {
+        let dir = tempfile::tempdir().unwrap();
+        let cred_path = dir.path().join(".credentials.json");
+        std::fs::write(&cred_path, r#"{"claudeAiOauth":{"accessToken":""}}"#).unwrap();
+
+        std::env::set_var("CLAUDE_CONFIG_DIR", dir.path().as_os_str());
+        let result = read_credentials_file();
+        std::env::remove_var("CLAUDE_CONFIG_DIR");
+
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_read_credentials_file_null_token() {
+        let dir = tempfile::tempdir().unwrap();
+        let cred_path = dir.path().join(".credentials.json");
+        std::fs::write(&cred_path, r#"{"claudeAiOauth":{"accessToken":null}}"#).unwrap();
+
+        std::env::set_var("CLAUDE_CONFIG_DIR", dir.path().as_os_str());
+        let result = read_credentials_file();
+        std::env::remove_var("CLAUDE_CONFIG_DIR");
+
+        assert_eq!(result, None);
     }
 
     #[test]

@@ -114,8 +114,35 @@ def get_colors(dark_mode: bool) -> dict:
         }
 
 
+def _parse_oauth_token(raw: str) -> str | None:
+    """Extract OAuth access token from credentials JSON."""
+    try:
+        creds = json.loads(raw.strip())
+        return creds.get("claudeAiOauth", {}).get("accessToken") or None
+    except (json.JSONDecodeError, KeyError):
+        return None
+
+
+def _get_claude_config_dir() -> Path:
+    """Get Claude config directory: $CLAUDE_CONFIG_DIR or ~/.claude."""
+    env = os.environ.get("CLAUDE_CONFIG_DIR")
+    if env:
+        return Path(env)
+    return Path.home() / ".claude"
+
+
+def _read_credentials_file() -> str | None:
+    """Read OAuth token from ~/.claude/.credentials.json."""
+    try:
+        cred_path = _get_claude_config_dir() / ".credentials.json"
+        return _parse_oauth_token(cred_path.read_text())
+    except (OSError, ValueError):
+        return None
+
+
 def get_claude_oauth_token() -> str | None:
-    """Get Claude Code OAuth token from macOS Keychain."""
+    """Get Claude Code OAuth token from macOS Keychain, falling back to credentials file."""
+    # Try macOS Keychain first
     try:
         result = subprocess.run(
             [
@@ -129,20 +156,19 @@ def get_claude_oauth_token() -> str | None:
             text=True,
             timeout=2,
         )
-        if result.returncode != 0:
-            return None
-
-        creds = json.loads(result.stdout.strip())
-        return creds.get("claudeAiOauth", {}).get("accessToken")
+        if result.returncode == 0:
+            token = _parse_oauth_token(result.stdout)
+            if token:
+                return token
     except (
         subprocess.TimeoutExpired,
         subprocess.SubprocessError,
-        json.JSONDecodeError,
-        KeyError,
         FileNotFoundError,
     ):
         pass
-    return None
+
+    # Fall back to credentials file (works on Linux/non-macOS)
+    return _read_credentials_file()
 
 
 def get_claude_usage() -> dict | None:
