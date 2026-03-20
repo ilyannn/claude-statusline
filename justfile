@@ -38,6 +38,24 @@ toml-format:
 build:
     cargo build --release --manifest-path rust/Cargo.toml
 
+# Tag and push a release (triggers GitHub Actions build + publish)
+release version:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! [[ "{{version}}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo "Error: version must be semver (e.g. 1.0.1), got '{{version}}'"
+        exit 1
+    fi
+    tag="v{{version}}"
+    if git rev-parse "$tag" >/dev/null 2>&1; then
+        echo "Error: tag $tag already exists"
+        exit 1
+    fi
+    echo "Tagging $tag and pushing..."
+    git tag "$tag"
+    git push origin "$tag"
+    echo "Release $tag triggered: https://github.com/ilyannn/claude-statusline/actions"
+
 # ---- Testing ----------------------------------------------------------------
 
 # Run all tests (Python 3.14 + 3.9 + Rust)
