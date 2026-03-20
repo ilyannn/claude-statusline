@@ -36,7 +36,12 @@ pub fn get_claude_oauth_token() -> Option<String> {
     }
 
     let stdout = String::from_utf8(output.stdout).ok()?;
-    let creds: serde_json::Value = serde_json::from_str(stdout.trim()).ok()?;
+    parse_oauth_token(&stdout)
+}
+
+/// Extract OAuth access token from keychain JSON. Extracted for testability.
+pub fn parse_oauth_token(json_str: &str) -> Option<String> {
+    let creds: serde_json::Value = serde_json::from_str(json_str.trim()).ok()?;
     creds
         .get("claudeAiOauth")?
         .get("accessToken")?
@@ -173,6 +178,38 @@ mod tests {
         assert!(result.is_some());
         let r = result.unwrap();
         assert_eq!(r.five_hour_resets, "2025-01-01T07:00:00Z");
+    }
+
+    // OAuth token parsing tests
+    #[test]
+    fn test_token_extraction() {
+        let json = r#"{"claudeAiOauth":{"accessToken":"test-token-123"}}"#;
+        assert_eq!(parse_oauth_token(json), Some("test-token-123".to_string()));
+    }
+
+    #[test]
+    fn test_malformed_json() {
+        assert_eq!(parse_oauth_token("not json"), None);
+    }
+
+    #[test]
+    fn test_missing_oauth_key() {
+        let json = r#"{"otherKey":"value"}"#;
+        assert_eq!(parse_oauth_token(json), None);
+    }
+
+    #[test]
+    fn test_missing_access_token() {
+        let json = r#"{"claudeAiOauth":{}}"#;
+        assert_eq!(parse_oauth_token(json), None);
+    }
+
+    #[test]
+    fn test_usage_no_cache_no_creds() {
+        let dir = tempfile::tempdir().unwrap();
+        // No cache file, no keychain — should return None
+        let result = get_claude_usage(dir.path());
+        assert!(result.is_none());
     }
 
     #[test]

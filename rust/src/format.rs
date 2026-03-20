@@ -266,6 +266,18 @@ mod tests {
     }
 
     #[test]
+    fn test_format_noon() {
+        // Noon UTC — result depends on local tz but should parse
+        let result = format_reset_time("2025-01-01T12:00:00+00:00");
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn test_format_truncated_string() {
+        assert_eq!(format_reset_time("2025-01"), "");
+    }
+
+    #[test]
     fn test_format_partial_iso_string() {
         assert_eq!(format_reset_time("2025-01-01"), "");
     }

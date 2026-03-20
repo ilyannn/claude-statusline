@@ -76,4 +76,21 @@ mod tests {
         write_cache(&path, "test data");
         assert_eq!(read_cache(&path, 60), Some("test data".to_string()));
     }
+
+    #[test]
+    fn test_falls_back_without_xdg() {
+        // Without XDG_CACHE_HOME, should still find a valid cache dir
+        env::remove_var("XDG_CACHE_HOME");
+        let result = get_cache_dir();
+        assert!(result.exists());
+        assert!(result.to_str().unwrap().contains("claude-statusline"));
+    }
+
+    #[test]
+    fn test_cache_dir_is_writable() {
+        let dir = get_cache_dir();
+        let test_file = dir.join("write-test");
+        assert!(fs::write(&test_file, "test").is_ok());
+        let _ = fs::remove_file(&test_file);
+    }
 }
