@@ -34,6 +34,10 @@ toml-check:
 toml-format:
     taplo format
 
+# Build Rust release binary
+build:
+    cargo build --release --manifest-path rust/Cargo.toml
+
 # ---- Testing ----------------------------------------------------------------
 
 # Run all tests (Python 3.14 + 3.9 + Rust)

@@ -1,6 +1,6 @@
 # Claude Code Status Line
 
-Custom status line script for Claude Code displaying context usage, model, git branch, Claude.ai usage limits, and update availability.
+Custom status line for Claude Code displaying context usage, model, git branch, Claude.ai usage limits, and update availability. Available in Python and [Rust](#rust-rewrite) (recommended, ~15ms).
 
 ## Output Format
 
@@ -42,8 +42,7 @@ Custom status line script for Claude Code displaying context usage, model, git b
 Build the Rust binary for best performance:
 
 ```bash
-cd /path/to/claude-statusline/rust
-cargo build --release
+just build
 ```
 
 Add to `~/.claude/settings.json`:
@@ -100,9 +99,10 @@ Colors adapt to light/dark mode via:
 ## Development
 
 ```bash
+just build         # Build Rust release binary
 just check         # Run all checks (lint + format + toml + test)
-just lint          # Lint with ruff
-just format        # Format with ruff
+just lint          # Lint with ruff + clippy
+just format        # Format with ruff + cargo fmt
 just test          # Run all tests (Python 3.14 + 3.9 + Rust)
 just test-cov      # Python tests with coverage (80%)
 just smoke         # Quick visual test
@@ -143,6 +143,6 @@ A full Rust rewrite lives in `rust/`. It is functionally equivalent to the Pytho
 The Rust binary avoids Python startup overhead and optionally skips the `git status` subprocess by reading `.git/HEAD` directly (`CLAUDE_STATUSLINE_SKIP_DIRTY=1`). This trades the dirty indicator (`*`) for a ~2x speedup.
 
 ```bash
-cd rust && cargo build --release
+just build
 # Binary at rust/target/release/claude-statusline
 ```
