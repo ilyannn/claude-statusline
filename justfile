@@ -110,6 +110,7 @@ bench:
     if os.path.isfile("./rust/target/release/claude-statusline"):
         runners.append(("Rust", ["./rust/target/release/claude-statusline"], {}))
         runners.append(("Rust (skip dirty)", ["./rust/target/release/claude-statusline"], {"CLAUDE_STATUSLINE_SKIP_DIRTY": "1"}))
+        runners.append(("Rust (skip dirty + theme)", ["./rust/target/release/claude-statusline"], {"CLAUDE_STATUSLINE_SKIP_DIRTY": "1", "CLAUDE_STATUSLINE_THEME": "dark"}))
 
     totals = {name: 0.0 for name, _, _ in runners}
 
