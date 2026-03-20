@@ -42,11 +42,7 @@ fn test_invalid_json_input() {
 
 #[test]
 fn test_empty_input() {
-    let output = run_statusline("")
-        .success()
-        .get_output()
-        .stdout
-        .clone();
+    let output = run_statusline("").success().get_output().stdout.clone();
     let text = String::from_utf8(output).unwrap();
     assert!(text.contains("◐"));
 }
@@ -112,11 +108,7 @@ fn test_different_models() {
 
 #[test]
 fn test_empty_json_object() {
-    let output = run_statusline("{}")
-        .success()
-        .get_output()
-        .stdout
-        .clone();
+    let output = run_statusline("{}").success().get_output().stdout.clone();
     let text = String::from_utf8(output).unwrap();
     assert!(text.contains("0%"));
     assert!(text.contains("?"));
@@ -124,13 +116,12 @@ fn test_empty_json_object() {
 
 #[test]
 fn test_null_values() {
-    let output = run_statusline(
-        r#"{"model":null,"context_window":null,"workspace":null,"version":null}"#,
-    )
-    .success()
-    .get_output()
-    .stdout
-    .clone();
+    let output =
+        run_statusline(r#"{"model":null,"context_window":null,"workspace":null,"version":null}"#)
+            .success()
+            .get_output()
+            .stdout
+            .clone();
     let text = String::from_utf8(output).unwrap();
     assert!(text.contains("0%"));
     assert!(text.contains("?"));
@@ -157,11 +148,7 @@ fn test_print_cache_dir() {
 #[test]
 fn test_with_all_fields() {
     let input = r#"{"model":{"display_name":"Opus"},"context_window":{"used_percentage":42.5},"workspace":{"current_dir":"/tmp"},"version":"2.1.29"}"#;
-    let output = run_statusline(input)
-        .success()
-        .get_output()
-        .stdout
-        .clone();
+    let output = run_statusline(input).success().get_output().stdout.clone();
     let text = String::from_utf8(output).unwrap();
     assert!(text.contains("42%"));
     assert!(text.contains("Opus"));
