@@ -1419,6 +1419,22 @@ class TestIntegration:
         assert "◕ 55%" in result.stdout
         assert "Opus" in result.stdout
 
+    def test_help_flag(self):
+        """Test --help shows usage info and env vars."""
+        script_path = Path(__file__).parent / "statusline.py"
+        result = subprocess.run(
+            ["uv", "run", str(script_path), "--help"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert result.returncode == 0
+        assert "CLAUDE_STATUSLINE_THEME" in result.stdout
+        assert "CLAUDE_STATUSLINE_SKIP_DIRTY" in result.stdout
+        assert "CLAUDE_STATUSLINE_DEBUG" in result.stdout
+        assert "CLAUDE_CONFIG_DIR" in result.stdout
+        assert "--print-cache-dir" in result.stdout
+
     def test_script_no_stderr_on_success(self):
         """Script should not output to stderr on success."""
         script_path = Path(__file__).parent / "statusline.py"

@@ -442,8 +442,27 @@ def main():
     print(" ".join(parts))
 
 
+HELP_TEXT = """\
+Claude Code Status Line — displays context %, model, git branch, usage, and update info.
+
+Usage: claude-statusline [OPTIONS]
+  Reads Claude Code status JSON from stdin and prints a formatted status line.
+
+Options:
+  --help             Show this help message
+  --print-cache-dir  Print the cache directory path and exit
+
+Environment variables:
+  CLAUDE_STATUSLINE_THEME       Force color theme: "dark" or "light"
+  CLAUDE_STATUSLINE_SKIP_DIRTY  Skip git dirty check (faster, reads .git/HEAD directly)
+  CLAUDE_STATUSLINE_DEBUG       Write raw stdin JSON to this file path for debugging
+  CLAUDE_CONFIG_DIR             Override Claude config directory (default: ~/.claude)\
+"""
+
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "--print-cache-dir":
+    if len(sys.argv) > 1 and sys.argv[1] == "--help":
+        print(HELP_TEXT)
+    elif len(sys.argv) > 1 and sys.argv[1] == "--print-cache-dir":
         print(CACHE_DIR)
     else:
         main()

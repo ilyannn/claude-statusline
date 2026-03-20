@@ -135,6 +135,22 @@ fn test_no_stderr_on_success() {
 }
 
 #[test]
+fn test_help_flag() {
+    let output = Command::cargo_bin("claude-statusline")
+        .unwrap()
+        .arg("--help")
+        .output()
+        .unwrap();
+    let text = String::from_utf8(output.stdout).unwrap();
+    assert!(output.status.success());
+    assert!(text.contains("CLAUDE_STATUSLINE_THEME"));
+    assert!(text.contains("CLAUDE_STATUSLINE_SKIP_DIRTY"));
+    assert!(text.contains("CLAUDE_STATUSLINE_DEBUG"));
+    assert!(text.contains("CLAUDE_CONFIG_DIR"));
+    assert!(text.contains("--print-cache-dir"));
+}
+
+#[test]
 fn test_print_cache_dir() {
     let output = Command::cargo_bin("claude-statusline")
         .unwrap()
