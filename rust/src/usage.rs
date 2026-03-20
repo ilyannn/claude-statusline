@@ -38,28 +38,31 @@ fn read_credentials_file() -> Option<String> {
     parse_oauth_token(&content)
 }
 
-/// Get Claude Code OAuth token from macOS Keychain, falling back to credentials file.
+/// Get Claude Code OAuth token from macOS Keychain or credentials file.
 pub fn get_claude_oauth_token() -> Option<String> {
-    // Try macOS Keychain first
-    if let Ok(output) = Command::new("security")
-        .args([
-            "find-generic-password",
-            "-s",
-            "Claude Code-credentials",
-            "-w",
-        ])
-        .output()
+    // Try macOS Keychain (only on macOS where `security` exists)
+    #[cfg(target_os = "macos")]
     {
-        if output.status.success() {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                if let Some(token) = parse_oauth_token(&stdout) {
-                    return Some(token);
+        if let Ok(output) = Command::new("security")
+            .args([
+                "find-generic-password",
+                "-s",
+                "Claude Code-credentials",
+                "-w",
+            ])
+            .output()
+        {
+            if output.status.success() {
+                if let Ok(stdout) = String::from_utf8(output.stdout) {
+                    if let Some(token) = parse_oauth_token(&stdout) {
+                        return Some(token);
+                    }
                 }
             }
         }
     }
 
-    // Fall back to credentials file (works on Linux/non-macOS)
+    // Fall back to credentials file (works on all platforms)
     read_credentials_file()
 }
 

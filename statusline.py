@@ -141,33 +141,34 @@ def _read_credentials_file() -> str | None:
 
 
 def get_claude_oauth_token() -> str | None:
-    """Get Claude Code OAuth token from macOS Keychain, falling back to credentials file."""
-    # Try macOS Keychain first
-    try:
-        result = subprocess.run(
-            [
-                "security",
-                "find-generic-password",
-                "-s",
-                "Claude Code-credentials",
-                "-w",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=2,
-        )
-        if result.returncode == 0:
-            token = _parse_oauth_token(result.stdout)
-            if token:
-                return token
-    except (
-        subprocess.TimeoutExpired,
-        subprocess.SubprocessError,
-        FileNotFoundError,
-    ):
-        pass
+    """Get Claude Code OAuth token from macOS Keychain or credentials file."""
+    # Try macOS Keychain (only on macOS where `security` exists)
+    if sys.platform == "darwin":
+        try:
+            result = subprocess.run(
+                [
+                    "security",
+                    "find-generic-password",
+                    "-s",
+                    "Claude Code-credentials",
+                    "-w",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=2,
+            )
+            if result.returncode == 0:
+                token = _parse_oauth_token(result.stdout)
+                if token:
+                    return token
+        except (
+            subprocess.TimeoutExpired,
+            subprocess.SubprocessError,
+            FileNotFoundError,
+        ):
+            pass
 
-    # Fall back to credentials file (works on Linux/non-macOS)
+    # Fall back to credentials file (works on all platforms)
     return _read_credentials_file()
 
 
