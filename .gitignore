@@ -17,3 +17,9 @@ htmlcov/
 
 # uv
 uv.lock
+
+# Rust
+rust/target/
+
+# Benchmarks
+.bench-venv/
