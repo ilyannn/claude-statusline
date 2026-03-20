@@ -16,21 +16,50 @@ Custom status line script for Claude Code displaying context usage, model, git b
 
 ## Requirements
 
-**Runtime:**
+**Runtime (Rust):**
+- macOS (Keychain access for OAuth, `defaults` for theme detection)
+- Rust toolchain (to build) or pre-built binary
+- npm - for update version check
+- git - for branch and dirty status detection
+- curl - for API calls
+
+**Runtime (Python):**
 - macOS (Keychain access for OAuth, `defaults` for theme detection)
 - Python 3.9+ (standard library only, no pip install needed)
-- npm - for update version check (`npm view @anthropic-ai/claude-code version`)
+- npm - for update version check
 - git - for branch and dirty status detection
 
 **Development:**
-- [uv](https://docs.astral.sh/uv/) - to run tests
+- [uv](https://docs.astral.sh/uv/) - to run Python tests
 - [just](https://github.com/casey/just) - command runner
 - [taplo](https://taplo.tamasfe.dev/) - TOML formatting
 - ruff runs via `uvx`, no separate install needed
 
 ## Installation
 
-Create a venv with a recent Python for best performance, then add to `~/.claude/settings.json`:
+### Rust (recommended)
+
+Build the Rust binary for best performance:
+
+```bash
+cd /path/to/claude-statusline/rust
+cargo build --release
+```
+
+Add to `~/.claude/settings.json`:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "CLAUDE_STATUSLINE_SKIP_DIRTY=1 /path/to/claude-statusline/rust/target/release/claude-statusline"
+  }
+}
+```
+
+### Python
+
+Create a venv with a recent Python, then add to `~/.claude/settings.json`:
 
 ```bash
 uv venv --python 3.14 /path/to/claude-statusline/.venv
@@ -56,6 +85,7 @@ Inspired by [this Reddit post](https://old.reddit.com/r/ClaudeCode/comments/1qgz
 | Variable | Description |
 |----------|-------------|
 | `CLAUDE_STATUSLINE_THEME` | Force `light` or `dark` theme |
+| `CLAUDE_STATUSLINE_SKIP_DIRTY` | Skip `git status` dirty check; read `.git/HEAD` directly (Rust only) |
 | `CLAUDE_STATUSLINE_DEBUG` | Path to dump input JSON (e.g. `/tmp/debug.json`) |
 
 ## Theme Detection
@@ -73,8 +103,8 @@ Colors adapt to light/dark mode via:
 just check         # Run all checks (lint + format + toml + test)
 just lint          # Lint with ruff
 just format        # Format with ruff
-just test          # Run 117 tests (Python 3.14 + 3.9)
-just test-cov      # Tests with coverage (80%)
+just test          # Run all tests (Python 3.14 + 3.9 + Rust)
+just test-cov      # Python tests with coverage (80%)
 just smoke         # Quick visual test
 just smoke-colors  # Show all 3 color states
 just smoke-light   # Test light theme
@@ -96,12 +126,23 @@ Cache directory resolution: `$XDG_CACHE_HOME/claude-statusline` > `~/.cache/clau
 
 All API calls run in background via `fork()` - they never block the status line.
 
-**Startup benchmarks** (50 iterations, `just bench`):
+**Startup benchmarks** (3 rounds × 50 iterations, randomized order, `just bench`):
 
-| Method | Python | Avg |
-|--------|--------|-----|
-| System Python | 3.9.6 | ~91ms |
-| venv Python | 3.14.3 | ~70ms |
-| `uv run` | 3.14.3 | ~99ms |
+| Method | Avg |
+|--------|-----|
+| Rust + skip dirty | ~15ms |
+| Rust | ~28ms |
+| venv Python 3.14 | ~67ms |
+| System Python 3.9 | ~85ms |
+| `uv run` | ~97ms |
 
-Using a venv with a recent Python is the fastest option. A Rust rewrite would reduce this to ~1-5ms.
+## Rust Rewrite
+
+A full Rust rewrite lives in `rust/`. It is functionally equivalent to the Python version with identical output, shared cache files, and the same environment variables.
+
+The Rust binary avoids Python startup overhead and optionally skips the `git status` subprocess by reading `.git/HEAD` directly (`CLAUDE_STATUSLINE_SKIP_DIRTY=1`). This trades the dirty indicator (`*`) for a ~2x speedup.
+
+```bash
+cd rust && cargo build --release
+# Binary at rust/target/release/claude-statusline
+```
